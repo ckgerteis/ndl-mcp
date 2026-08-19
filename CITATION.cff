@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If this software supports your research, please cite it."
+title: "ndl-mcp: an MCP server for NDL Search (国立国会図書館サーチ)"
+abstract: >-
+  A Model Context Protocol stdio server exposing NDL Search, operated by the
+  National Diet Library of Japan, over the SRU searchRetrieve interface as six
+  tools. Built to the undertakings filed with the library: serial requests at a
+  minimum one-second interval, a capped record count with no auto-pagination,
+  no harvesting interface, only the approved data providers reachable, credit
+  carried on every response, and nothing cached. The NDL search APIs require no
+  credential; the filing is a notification duty, not a key grant.
+type: software
+authors:
+  - family-names: Gerteis
+    given-names: Christopher
+    affiliation: SOAS University of London
+    orcid: "https://orcid.org/0000-0003-4977-6152"
+version: 1.0.0
+date-released: "2026-08-19"
+license: MIT
+repository-code: "https://github.com/ckgerteis/ndl-mcp"
+keywords:
+  - model context protocol
+  - National Diet Library
+  - SRU
+  - Japanese studies
+  - East Asian studies
+  - digital humanities
+  - bibliographic search

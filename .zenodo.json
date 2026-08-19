@@ -1,0 +1,27 @@
+{
+  "title": "ndl-mcp: An MCP server for NDL Search (国立国会図書館サーチ)",
+  "description": "A FastMCP stdio server exposing NDL Search, operated by the National Diet Library of Japan, over the SRU searchRetrieve interface as six tools: books, articles, the national bibliography, open digital collections, a cross-type search and single-record lookup. Implements the undertakings filed with the library — serial requests at a minimum one-second interval, a capped record count with no auto-pagination, no harvesting interface, only approved data providers reachable, credit on every response, nothing cached. No credential is required. Responses use the shared typed envelope and deposit to an append-only hash-chained query ledger. Works with any MCP-compatible client.",
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "MIT",
+  "version": "1.0.0",
+  "creators": [
+    {
+      "name": "Gerteis, Christopher",
+      "affiliation": "SOAS University of London",
+      "orcid": "0000-0003-4977-6152"
+    }
+  ],
+  "keywords": [
+    "Model Context Protocol",
+    "MCP",
+    "National Diet Library",
+    "NDL Search",
+    "SRU",
+    "Japanese studies",
+    "East Asian studies",
+    "digital humanities",
+    "bibliographic search",
+    "scholarly metadata"
+  ]
+}
