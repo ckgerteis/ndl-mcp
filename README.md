@@ -70,6 +70,12 @@ Search fields: `title`, `creator`, `publisher`, `subject`, `anywhere`, `ndc`, `i
 
 **A romanised term will under-return.** NDL Search indexes Japanese-language records in Japanese script. A Latin-script query against a Japanese corpus is the romaji trap, and the envelope raises `SCRIPT_LATIN_QUERY` for it. The `searched_for` headline exists so that the term the assistant actually chose is visible at the top of the response rather than buried — that is the whole point of the field, and the reason a disclosure can report the terms a search used.
 
+## Response format
+
+Every tool returns the response envelope built by `mediation.py` and defined in [`response-schema.json`](response-schema.json), schema version 2.2.0. The module and the schema are vendored byte-identically across `cinii-mcp`, `jstage-mcp`, `korea-scholarship-mcp` and this server, so an envelope from one can be read by a consumer written for another.
+
+Search operations carry `searched_for` — the term actually sent, its detected script, and the matching mode — hoisted to the top of the envelope so a relaying client cannot drop it. `ndl_get_record` omits it: a fetch is handed an identifier and chooses no term.
+
 ## Receipts
 
 `mediation.emit()` writes each response envelope to the append-only, hash-chained ledger at `MCP_RECEIPT_LOG`, which `install.ps1` sets to the same file the other servers use. Unset the variable and nothing is written and nothing fails.
