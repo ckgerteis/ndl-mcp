@@ -16,15 +16,17 @@ Requests are issued one at a time, at a measured pace, under the undertakings fi
 
 **There is no credential.** The NDL search APIs are open. No API key, no application ID, no token, nothing to paste into a config file. If you are waiting for something to arrive before you can use this, you are waiting for something that is not coming.
 
-**There is still an obligation.** Section 17 of [APIのご利用について](https://ndlsearch.ndl.go.jp/help/api) asks continuous API users to report their contact details and the nature of their use through the [application form](https://form2.ndl.go.jp/form/pub/ndl07/api) — 「事前の利用申請の要否にかかわらず」, whether or not a prior usage application is required of them. A formal 利用申請 is required only for revenue-generating use; the notification is asked of everyone who accesses continuously.
+**Registering is recommended.** The author filed a notification of continuous use on 19 August 2026 through the [form](https://form2.ndl.go.jp/form/pub/ndl07/api) described in [APIのご利用について](https://ndlsearch.ndl.go.jp/help/api). The library replied that registration is **no longer required, though still welcome**. A formal 利用申請 remains necessary only for revenue-generating use.
 
-Because access is not gated on the filing, nothing in the world will stop you skipping it. So `install.ps1` stops you: it refuses to register the server until the notification is recorded, and writes the date to `NDL-API-NOTIFICATION.txt`.
+Register anyway. It costs a few minutes, it tells the library who is using the interface and for what, and a national library that can see its API being used by researchers has an argument for keeping it funded and open that it does not otherwise have. Scholarly infrastructure survives on evidence of use.
+
+`install.ps1` records the date to `NDL-API-NOTIFICATION.txt` when you pass it:
 
 ```powershell
 .\install.ps1 -NotificationFiled 2026-08-19
 ```
 
-Run it without the flag and it prints the form URL, offers to open it, and exits.
+Run it without the flag and it prints the form URL, offers to open it, and continues with the install.
 
 ## What the server will not do
 
@@ -39,7 +41,7 @@ The undertakings below were filed with the NDL. They are implemented, not aspire
 | Credit on every response | `ATTRIBUTION` plus `provider_credit()` on every envelope |
 | Metadata displayed, not accumulated | no cache, no local store |
 
-Change any of them and you are changing what was declared to a national library. File a supplementary notification first.
+Change any of them and you change what this server declares about itself. Update this table, the module comment in `server.py`, and `NDL-API-NOTIFICATION.txt` in the same commit, so the description a reader checks stays true to what the code does.
 
 ## Providers
 
@@ -53,7 +55,7 @@ Only the five sets declared in the notification of 19 August 2026 are reachable.
 | `zassaku-online` | 国立国会図書館雑誌記事索引オンライン資料編 |
 | `ndl-dl-open` | 国立国会図書館デジタルコレクション（オープンデータ） |
 
-`ndl-dl` and `ndl-dl-online` — the wider Digital Collections — are marked ○ for 非営利 and △ only for 営利 on the [provider list](https://ndlsearch.ndl.go.jp/help/api/provider), so scholarly use needs no usage application. They are out of scope here because they were not named in the notification of 19 August 2026, and because their metadata carries no open licence — displayable, not redistributable. Adding them is a supplementary notification, not an application. A request naming them is refused in process, with a `DPID_NOT_PERMITTED` diagnostic, rather than sent.
+`ndl-dl` and `ndl-dl-online` — the wider Digital Collections — are marked ○ for 非営利 and △ only for 営利 on the [provider list](https://ndlsearch.ndl.go.jp/help/api/provider), so scholarly use needs no usage application. They are out of scope here because they sit outside the set this server declares, and because their metadata carries no open licence — displayable, not redistributable. Adding them is a documentation change in this repository, not an application to the library. A request naming them is refused in process, with a `DPID_NOT_PERMITTED` diagnostic, rather than sent.
 
 ## Tools
 

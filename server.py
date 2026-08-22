@@ -4,9 +4,11 @@ NDL Search MCP Server (v1.0.1)
 An MCP server for searching 国立国会図書館サーチ (NDL Search), operated by the
 National Diet Library of Japan, over the SRU searchRetrieve interface.
 
-Built to the undertakings filed with the NDL in the API application of
-19 August 2026 (電子情報部 電子情報流通課). Those undertakings are the
-specification, not commentary:
+Built to the undertakings given to the NDL when continuous use was registered
+on 19 August 2026 (電子情報部 電子情報流通課). The library has since confirmed
+that registration is no longer required, only welcome; the undertakings are kept
+anyway, because they are the right way to treat a public service and because
+they are the specification this server was written against, not commentary:
 
   * requests are issued serially — one connection, never concurrent
   * a minimum interval of MIN_REQUEST_INTERVAL seconds is held between requests
@@ -16,8 +18,9 @@ specification, not commentary:
     where the API提供対象データプロバイダ一覧 makes it a condition
   * retrieved metadata is displayed, not accumulated; nothing is cached
 
-Only the five data providers named in that notification are reachable. A request
-for any other dpid is refused in process rather than sent.
+Only five NDL-created data providers are reachable, the set registered in 2026.
+A request for any other dpid is refused in process rather than sent — a declared
+scope a reader can check is worth more than a wide one nobody can.
 
 The metadata this server retrieves is NDL-created throughout, and deliberately
 so. 国立国会図書館ウェブサイトのコンテンツ利用規約 places NDL website content —
@@ -90,7 +93,7 @@ ATTRIBUTION = (
 
 COVERAGE_NOTE = (
     "NDL Search aggregates records from some 117 providers; this server queries "
-    "only the five NDL-created sets declared in the notification of 19 Aug 2026. "
+    "only the five NDL-created sets this server declares. "
     "Absence here is absence from those sets, not from the NDL's holdings as a "
     "whole, and still less from NDL Search. Outside this server's declared scope "
     "in particular: the Digital Collections proper (ndl-dl, ndl-dl-online), the "
@@ -102,12 +105,13 @@ COVERAGE_NOTE = (
 # Data providers
 # ==============================================================================
 #
-# Exactly the set named in the notification of 19 August 2026. All five are
+# The set registered with the NDL in August 2026. All five are
 # marked ○ in BOTH the 非営利 and 営利 columns of the API提供対象データプロバイダ
 # 一覧 — no usage application, whatever the use — and all five carry the NDL's
-# own bibliographic-data condition. Adding to this table is a change to what was
-# declared to the NDL, not a configuration tweak: file a supplementary
-# notification first.
+# own bibliographic-data condition. Adding to this table widens what this server
+# declares about itself, so update the README, NDL-API-NOTIFICATION.txt and this
+# comment in the same commit. The library no longer requires notification of a
+# change; a reader still requires an accurate description.
 #
 # On the licence: the 一覧 records these sets as 「CC BY」 by way of 国立国会図書館
 # ウェブサイトのコンテンツ利用規約, which places them under 公共データ利用規約
@@ -140,11 +144,11 @@ PROVIDERS: dict[str, dict[str, Optional[str]]] = {
         "subset_of": None,
     },
     # NB: the 一覧 spells this dpid with a hyphen before "national". The
-    # notification of 19 Aug 2026 and v1.0.0 of this file both wrote
+    # registration of 19 Aug 2026 and v1.0.0 of this file both wrote
     # "iss-ndl-opacnational", which names no provider: SRU matches nothing and
     # ndl_search_national_bibliography returned a clean, credible zero for every
-    # query put to it. Corrected 20 Aug 2026; carried into the supplementary
-    # notification as a correction of the declared set, not an extension of it.
+    # query put to it. Corrected 20 Aug 2026. The set intended was always the
+    # national bibliography, as named; only the identifier was wrong.
     "iss-ndl-opac-national": {
         "ja": "国立国会図書館全国書誌情報",
         "en": "Japanese National Bibliography",
@@ -537,10 +541,10 @@ async def _search(operation: str, params: SearchInput, dpids: list[str]) -> str:
                     "error", "DPID_NOT_PERMITTED",
                     f"Provider '{dpid}' is outside the set declared to the NDL and was not requested.",
                     "Declared providers: " + ", ".join(PROVIDERS) + ". "
-                    "Widening this set is a supplementary notification to 電子情報部"
-                    "電子情報流通課, not a configuration change. ndl_data_providers.json "
-                    "beside this file carries the full 一覧 with each provider's "
-                    "application and licence conditions.",
+                    "ndl_data_providers.json beside this file carries the full 一覧 "
+                    "with each provider's application and licence conditions. Widening "
+                    "the set means updating what this server says about itself, not "
+                    "obtaining permission.",
                 )],
                 attribution=ATTRIBUTION, coverage_note=COVERAGE_NOTE,
             )
@@ -671,8 +675,9 @@ async def ndl_search_digital_open(params: SearchInput) -> str:
 
     The open-data set only. The wider Digital Collections (ndl-dl, ndl-dl-online)
     are marked ○ for 非営利 use and so need no usage application, but they were
-    not named in the notification of 19 August 2026 and their metadata carries no
-    open licence. They are out of scope until a supplementary notification.
+    outside the set this server declares and their metadata carries no open
+    licence — displayable, not redistributable. Adding them is a documentation
+    change here, not an application to the library.
     """
     return await _search("search_digital_open", params, DIGITAL_OPEN_DPIDS)
 
