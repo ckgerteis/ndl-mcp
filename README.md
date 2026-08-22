@@ -35,17 +35,17 @@ Change any of them and you are changing what was declared to a national library.
 
 ## Providers
 
-Only the five sets declared in the application are reachable. All are NDL-created and CC BY, and none requires a usage application:
+Only the five sets declared in the notification of 19 August 2026 are reachable. All are NDL-created, all are marked ○ in both the 非営利 and 営利 columns of the provider list, and none requires a usage application. Their metadata is governed by 公共データ利用規約（第1.0版）(PDL1.0), which the NDL states to be compatible with CC BY 4.0 — PDL1.0 is the licence, CC BY 4.0 the compatibility claim:
 
 | dpid | 名称 |
 |---|---|
 | `iss-ndl-opac` | 国立国会図書館蔵書 |
-| `iss-ndl-opacnational` | 国立国会図書館全国書誌情報 |
+| `iss-ndl-opac-national` | 国立国会図書館全国書誌情報 |
 | `zassaku` | 国立国会図書館雑誌記事索引 |
 | `zassaku-online` | 国立国会図書館雑誌記事索引オンライン資料編 |
 | `ndl-dl-open` | 国立国会図書館デジタルコレクション（オープンデータ） |
 
-`ndl-dl` and `ndl-dl-online` — the wider Digital Collections — are marked △ on the [provider list](https://ndlsearch.ndl.go.jp/help/api/provider) and require an application that has not been made. A request naming them is refused in process, with a `DPID_NOT_PERMITTED` diagnostic, rather than sent.
+`ndl-dl` and `ndl-dl-online` — the wider Digital Collections — are marked ○ for 非営利 and △ only for 営利 on the [provider list](https://ndlsearch.ndl.go.jp/help/api/provider), so scholarly use needs no usage application. They are out of scope here because they were not named in the notification of 19 August 2026, and because their metadata carries no open licence — displayable, not redistributable. Adding them is a supplementary notification, not an application. A request naming them is refused in process, with a `DPID_NOT_PERMITTED` diagnostic, rather than sent.
 
 ## Tools
 
@@ -96,7 +96,7 @@ The reason is evidential. The OpenSearch response format is not documented in th
 
 ## Licence
 
-MIT. Metadata retrieved through this server is CC BY 4.0 from the National Diet Library; the credit line the server emits is the attribution that licence requires, and it should survive into anything you publish from the results.
+MIT, for the server code. Metadata retrieved through this server is governed by 公共データ利用規約（第1.0版）(PDL1.0), read with 「国以外の者」 as 「国立国会図書館以外の者」; the NDL states that condition to be compatible with CC BY 4.0, which is a compatibility claim rather than a grant of CC BY 4.0 itself. The credit line the server emits is the attribution PDL1.0 requires, and it should survive into anything you publish from the results.
 
 ## What has been tested, and what has not
 
