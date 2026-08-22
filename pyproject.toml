@@ -1,6 +1,6 @@
 [project]
 name = "ndl-mcp"
-version = "1.0.0"
+version = "1.0.1"
 description = "An MCP server for the NDL Search (国立国会図書館サーチ) SRU API"
 readme = "README.md"
 requires-python = ">=3.10"

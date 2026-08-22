@@ -1,12 +1,14 @@
 """
-NDL Search MCP Server (v1.0.0)
+NDL Search MCP Server (v1.0.1)
 ==============================
 An MCP server for searching 国立国会図書館サーチ (NDL Search), operated by the
 National Diet Library of Japan, over the SRU searchRetrieve interface.
 
-Built to the undertakings filed with the NDL in the API application of
-19 August 2026 (電子情報部 電子情報流通課). Those undertakings are the
-specification, not commentary:
+Built to the undertakings given to the NDL when continuous use was registered
+on 19 August 2026 (電子情報部 電子情報流通課). The library has since confirmed
+that registration is no longer required, only welcome; the undertakings are kept
+anyway, because they are the right way to treat a public service and because
+they are the specification this server was written against, not commentary:
 
   * requests are issued serially — one connection, never concurrent
   * a minimum interval of MIN_REQUEST_INTERVAL seconds is held between requests
@@ -16,8 +18,19 @@ specification, not commentary:
     where the API提供対象データプロバイダ一覧 makes it a condition
   * retrieved metadata is displayed, not accumulated; nothing is cached
 
-Only the four data providers named in that application are reachable. A request
-for any other dpid is refused in process rather than sent.
+Only five NDL-created data providers are reachable, the set registered in 2026.
+A request for any other dpid is refused in process rather than sent — a declared
+scope a reader can check is worth more than a wide one nobody can.
+
+The metadata this server retrieves is NDL-created throughout, and deliberately
+so. 国立国会図書館ウェブサイトのコンテンツ利用規約 places NDL website content —
+書誌データ included — under 公共データ利用規約（第1.0版）(PDL1.0), read with
+「国以外の者」 as 「国立国会図書館以外の者」, and then carves out as third-party
+rights 「書誌データ、書影等のうち、国立国会図書館以外の者が作成したもの」,
+naming NDL Search metadata created by others as an instance of it. Records
+aggregated from the other ~110 providers reach the user under conditions the NDL
+does not set and this server cannot assert. Restricting to NDL-created sets is
+what makes a single attribution line truthful.
 
 There is no credential. The NDL search APIs are open — no application ID, no
 key, no token. The application filed with the library is a permission and
@@ -29,6 +42,7 @@ cinii-mcp; install.ps1 copies them rather than reproducing them.
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 import time
 from typing import Any, Optional
@@ -43,7 +57,13 @@ except ModuleNotFoundError:  # mcp SDK 2.x removed mcp.server.fastmcp
 
 import mediation as M
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
+
+# httpx logs every request URL at INFO. There is no credential in an NDL request,
+# so nothing leaks — but a search term travels in that URL, and the line lands on
+# the stderr Claude Desktop captures. Mute it, as the rest of the family does.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 # ==============================================================================
 # Configuration
@@ -72,55 +92,97 @@ ATTRIBUTION = (
 )
 
 COVERAGE_NOTE = (
-    "NDL Search aggregates records from many providers; this server queries only "
-    "the four NDL-created, CC BY sets declared in the API application. Absence "
-    "here is absence from those sets, not from the NDL's holdings as a whole."
+    "NDL Search aggregates records from some 117 providers; this server queries "
+    "only the five NDL-created sets this server declares. "
+    "Absence here is absence from those sets, not from the NDL's holdings as a "
+    "whole, and still less from NDL Search. Outside this server's declared scope "
+    "in particular: the Digital Collections proper (ndl-dl, ndl-dl-online), the "
+    "web archive (warp), the foreign-language Japan-related books set (ndl-boj), "
+    "and the in-process national bibliography (iss-ndl-opac-inprocess)."
 )
 
 # ==============================================================================
 # Data providers
 # ==============================================================================
 #
-# Exactly the set named in the API application of 19 August 2026. All four are
-# marked ○ (no usage application required) and CC BY on the API提供対象データ
-# プロバイダ一覧. Adding to this table is a change to what was declared to the
-# NDL, not a configuration tweak: file a supplementary notification first.
+# The set registered with the NDL in August 2026. All five are
+# marked ○ in BOTH the 非営利 and 営利 columns of the API提供対象データプロバイダ
+# 一覧 — no usage application, whatever the use — and all five carry the NDL's
+# own bibliographic-data condition. Adding to this table widens what this server
+# declares about itself, so update the README, NDL-API-NOTIFICATION.txt and this
+# comment in the same commit. The library no longer requires notification of a
+# change; a reader still requires an accurate description.
 #
-# 国立国会図書館デジタルコレクション proper (ndl-dl, ndl-dl-online) is marked △.
-# It is deliberately absent.
+# On the licence: the 一覧 records these sets as 「CC BY」 by way of 国立国会図書館
+# ウェブサイトのコンテンツ利用規約, which places them under 公共データ利用規約
+# （第1.0版）(PDL1.0) and states that condition to be *compatible with* CC BY 4.0.
+# PDL1.0 is the governing instrument; CC BY 4.0 is the compatibility claim. The
+# credit lines below say so rather than asserting a licence the NDL has not
+# granted.
+#
+# On 国立国会図書館デジタルコレクション proper (ndl-dl, ndl-dl-online, ndl-dl-doi):
+# the 一覧 marks them ○ for 非営利 and △ for 営利, so scholarly use needs no usage
+# application. They are absent because they were not named in the notification of
+# 19 August 2026, and because their metadata carries no open licence —
+# displayable, not redistributable. Adding them is a filing, not an application.
+#
+# Set algebra, from 国立国会図書館作成書誌のデータプロバイダ詳細. It matters
+# because a union over these dpids is not a sum:
+#   iss-ndl-opac  ⊃ iss-ndl-opac-national, ndl-boj, iss-ndl-opac-bib
+#   iss-ndl-opac  ∌ iss-ndl-opac-inprocess, zassaku, zassaku-online,
+#                   ndl-dl, ndl-dl-online
+#   zassaku       ∌ zassaku-online
+#   ndl-dl-open   ⊆ ndl-dl ∪ ndl-dl-online, and so disjoint from iss-ndl-opac
+# Since 2024-01 iss-ndl-opac also carries serial-issue-level records the pre-2024
+# set did not; iss-ndl-opac-bib is the same set without them.
 
-PROVIDERS: dict[str, dict[str, str]] = {
+PROVIDERS: dict[str, dict[str, Optional[str]]] = {
     "iss-ndl-opac": {
         "ja": "国立国会図書館蔵書",
         "en": "NDL holdings",
-        "credit": "国立国会図書館蔵書 (CC BY 4.0)",
+        "credit": "国立国会図書館蔵書 (PDL1.0; CC BY 4.0 compatible)",
+        "subset_of": None,
     },
-    "iss-ndl-opacnational": {
+    # NB: the 一覧 spells this dpid with a hyphen before "national". The
+    # registration of 19 Aug 2026 and v1.0.0 of this file both wrote
+    # "iss-ndl-opacnational", which names no provider: SRU matches nothing and
+    # ndl_search_national_bibliography returned a clean, credible zero for every
+    # query put to it. Corrected 20 Aug 2026. The set intended was always the
+    # national bibliography, as named; only the identifier was wrong.
+    "iss-ndl-opac-national": {
         "ja": "国立国会図書館全国書誌情報",
         "en": "Japanese National Bibliography",
-        "credit": "国立国会図書館全国書誌情報 (CC BY 4.0)",
+        "credit": "国立国会図書館全国書誌情報 (PDL1.0; CC BY 4.0 compatible)",
+        "subset_of": "iss-ndl-opac",
     },
     "zassaku": {
         "ja": "国立国会図書館雑誌記事索引",
         "en": "NDL Japanese Periodicals Index",
-        "credit": "国立国会図書館雑誌記事索引 (CC BY 4.0)",
+        "credit": "国立国会図書館雑誌記事索引 (PDL1.0; CC BY 4.0 compatible)",
+        "subset_of": None,
     },
     "zassaku-online": {
         "ja": "国立国会図書館雑誌記事索引オンライン資料編",
         "en": "NDL Japanese Periodicals Index (online materials)",
-        "credit": "国立国会図書館雑誌記事索引オンライン資料編 (CC BY 4.0)",
+        "credit": "国立国会図書館雑誌記事索引オンライン資料編 (PDL1.0; CC BY 4.0 compatible)",
+        "subset_of": None,
     },
     "ndl-dl-open": {
         "ja": "国立国会図書館デジタルコレクション（オープンデータ）",
         "en": "NDL Digital Collections (Open Data)",
-        "credit": "国立国会図書館デジタルコレクション（オープンデータ） (CC BY 4.0)",
+        "credit": "国立国会図書館デジタルコレクション（オープンデータ） (PDL1.0; CC BY 4.0 compatible)",
+        "subset_of": None,
     },
 }
 
 BOOK_DPIDS = ["iss-ndl-opac"]
-BIBLIOGRAPHY_DPIDS = ["iss-ndl-opacnational"]
+BIBLIOGRAPHY_DPIDS = ["iss-ndl-opac-national"]
 ARTICLE_DPIDS = ["zassaku", "zassaku-online"]
 DIGITAL_OPEN_DPIDS = ["ndl-dl-open"]
+
+# ndl_search_all unions the declared set. iss-ndl-opac-national is kept in it
+# although it is a subset of iss-ndl-opac: the union is unchanged by it, and the
+# provider credit it contributes is the one a reader of a 全国書誌 record needs.
 ALL_DPIDS = list(PROVIDERS.keys())
 
 
@@ -478,7 +540,11 @@ async def _search(operation: str, params: SearchInput, dpids: list[str]) -> str:
                 diagnostics=[M.diag(
                     "error", "DPID_NOT_PERMITTED",
                     f"Provider '{dpid}' is outside the set declared to the NDL and was not requested.",
-                    "Declared providers: " + ", ".join(PROVIDERS) + ".",
+                    "Declared providers: " + ", ".join(PROVIDERS) + ". "
+                    "ndl_data_providers.json beside this file carries the full 一覧 "
+                    "with each provider's application and licence conditions. Widening "
+                    "the set means updating what this server says about itself, not "
+                    "obtaining permission.",
                 )],
                 attribution=ATTRIBUTION, coverage_note=COVERAGE_NOTE,
             )
@@ -608,7 +674,10 @@ async def ndl_search_digital_open(params: SearchInput) -> str:
     """Search 国立国会図書館デジタルコレクション（オープンデータ）.
 
     The open-data set only. The wider Digital Collections (ndl-dl, ndl-dl-online)
-    require a usage application that has not been made, and are not reachable here.
+    are marked ○ for 非営利 use and so need no usage application, but they were
+    outside the set this server declares and their metadata carries no open
+    licence — displayable, not redistributable. Adding them is a documentation
+    change here, not an application to the library.
     """
     return await _search("search_digital_open", params, DIGITAL_OPEN_DPIDS)
 

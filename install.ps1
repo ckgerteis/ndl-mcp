@@ -25,9 +25,16 @@
 
     Idempotent: rerun safely. Only the 'ndl' entry is overwritten.
 
+.PARAMETER ReceiptLog
+    Path to the shared append-only receipt log. Defaults to the file the rest of
+    the server family writes to. A hash chain is per-file: pointing this
+    elsewhere creates a second, independent chain.
+
 .PARAMETER NotificationFiled
-    Date the NDL notification was filed, as YYYY-MM-DD. Recorded to
-    NDL-API-NOTIFICATION.txt so the check passes on later runs.
+    Date you registered with the NDL, as YYYY-MM-DD. Recorded to
+    NDL-API-NOTIFICATION.txt. Registration is recommended, not required: the
+    library confirmed in August 2026 that notification is no longer mandatory,
+    and the install proceeds without it.
 
 .PARAMETER PythonVersion
     Python launcher tag used only if no shared venv is found. Defaults to '3.13'.
@@ -39,6 +46,7 @@
 [CmdletBinding()]
 param(
     [string]$NotificationFiled,
+    [string]$ReceiptLog,
     [string]$PythonVersion = "3.13"
 )
 
@@ -78,10 +86,11 @@ Form:  $FormUrl
 Terms: $TermsUrl
 Contact: di-api@ndl.go.jp
 
-Filed as the notification described at section 17 of the NDL Search API help:
-contact details and nature of use, reported regardless of whether a prior usage
-application is required. Providers declared: iss-ndl-opac, iss-ndl-opacnational,
-zassaku, zassaku-online, ndl-dl-open — all CC BY, none requiring application.
+Registered through the form described at section 17 of the NDL Search API help:
+contact details and nature of use. The library confirmed in August 2026 that this
+registration is no longer required, though still welcome. Providers used:
+iss-ndl-opac, iss-ndl-opac-national, zassaku, zassaku-online, ndl-dl-open — all
+NDL-created, none requiring a usage application for scholarly work.
 
 Undertakings given, and implemented in server.py:
   serial requests, no concurrency        -> _rate_lock held across each request
@@ -91,31 +100,36 @@ Undertakings given, and implemented in server.py:
   credit on every response               -> ATTRIBUTION + provider_credit()
   metadata displayed, not accumulated    -> no cache, no local store
 
-If the declared provider set or any undertaking changes, file a supplementary
-notification before deploying the change.
+The undertakings above are kept because they are good practice toward a public
+service, not because a filing compels them. If the provider set or any undertaking
+changes, update this file so the record stays true.
 "@ | Out-File -FilePath $MarkerFile -Encoding utf8
     Write-Host "    Recorded to $MarkerFile"
 }
 
 if (-not (Test-Path $MarkerFile)) {
     Write-Host ""
-    Write-Host "  The NDL asks continuous API users to report their contact details and" -ForegroundColor Yellow
-    Write-Host "  the nature of their use, whether or not a prior application is required." -ForegroundColor Yellow
+    Write-Host "  Registering with the NDL is recommended, and not required." -ForegroundColor Yellow
+    Write-Host "  The library confirmed in August 2026 that notification of continuous"
+    Write-Host "  use is no longer mandatory, though it remains welcome."
+    Write-Host ""
+    Write-Host "  Do it anyway. It takes a few minutes, it tells the library who is"
+    Write-Host "  using the interface and for what, and a national library that can"
+    Write-Host "  see researchers using its API has an argument for keeping it open."
     Write-Host ""
     Write-Host "  Form:  $FormUrl"
     Write-Host "  Terms: $TermsUrl"
     Write-Host "  Query: di-api@ndl.go.jp"
     Write-Host ""
-    Write-Host "  No key or token is issued. Filing is the obligation; access is already open." -ForegroundColor Yellow
-    Write-Host ""
     $answer = Read-Host "  Open the form now? [y/N]"
     if ($answer -match '^[Yy]') { Start-Process $FormUrl }
     Write-Host ""
-    throw "Notification not recorded. File it, then rerun with -NotificationFiled YYYY-MM-DD."
+    Write-Host "  Continuing. Rerun with -NotificationFiled YYYY-MM-DD once you have" -ForegroundColor Yellow
+    Write-Host "  registered, and the date will be recorded here." -ForegroundColor Yellow
+} else {
+    Write-Host "    Registration on record:"
+    Get-Content $MarkerFile -TotalCount 2 | ForEach-Object { Write-Host "      $_" }
 }
-
-Write-Host "    Notification on record:"
-Get-Content $MarkerFile -TotalCount 2 | ForEach-Object { Write-Host "      $_" }
 
 # -- 1. Vendor mediation.py and ledger.py ----------------------------------
 
@@ -209,7 +223,12 @@ if (-not (Test-Path $ConfigPath)) {
 
 # Match the receipt-ledger settings the other four servers carry, so that NDL
 # queries are logged on the same terms and can go into the same deposit.
-$receiptLog = Join-Path $env:APPDATA "Claude\mcp-receipts.jsonl"
+# The receipt log is shared with the rest of the family: a hash chain is
+# per-file, so a second path means a second, independent chain and "the
+# log" stops naming one thing. Override with -ReceiptLog if that is wanted.
+$receiptLog = if ($ReceiptLog) { $ReceiptLog } else {
+    Join-Path $env:USERPROFILE "Dropbox\MY RESEARCH WRITING\RESEARCH ETHICS\receipts\receipts.jsonl"
+}
 $entry = [ordered]@{
     command = $Python
     args    = @((Join-Path $DeployDir "server.py"))
@@ -245,7 +264,7 @@ Write-Host "  args    : $(Join-Path $DeployDir 'server.py')"
 Write-Host "  receipts: $receiptLog"
 Write-Host ""
 Write-Host "Providers reachable (all CC BY, no application required):" -ForegroundColor Green
-Write-Host "  iss-ndl-opac, iss-ndl-opacnational, zassaku, zassaku-online, ndl-dl-open"
+Write-Host "  iss-ndl-opac, iss-ndl-opac-national, zassaku, zassaku-online, ndl-dl-open"
 Write-Host ""
 Write-Host "Not reachable by design: ndl-dl and ndl-dl-online require a usage" -ForegroundColor Yellow
 Write-Host "application that has not been made. Adding them is a filing, not a config change." -ForegroundColor Yellow

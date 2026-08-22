@@ -4,19 +4,29 @@ An MCP server for searching 国立国会図書館サーチ (NDL Search), operate
 
 Third in a series with [`cinii-mcp`](https://github.com/ckgerteis/cinii-mcp) and [`jstage-mcp`](https://github.com/ckgerteis/jstage-mcp), and sharing their response envelope: typed query and script, matching mode, graduated breadth, per-item `matched_in`, typed diagnostics, a loggable receipt, attribution.
 
+## What this is for
+
+The National Diet Library receives everything published in Japan, and this reaches five of its own catalogues: general holdings, the Japanese National Bibliography, the periodicals index, that index's online-materials companion, and the open-data digital collections.
+
+Use the national bibliography when an imprint fact has to be right — a date, a publisher, an edition statement — because it is the authority other catalogues copy from. The periodicals index reaches article-level records for Japanese magazines and journals going back well beyond what CiNii or J-STAGE hold, which is where prewar and early postwar material becomes searchable. Single records resolve by JP number or NDL bibliographic ID.
+
+Requests are issued one at a time, at a measured pace, under the undertakings filed with the library.
+
 ## Before you run this
 
 **There is no credential.** The NDL search APIs are open. No API key, no application ID, no token, nothing to paste into a config file. If you are waiting for something to arrive before you can use this, you are waiting for something that is not coming.
 
-**There is still an obligation.** Section 17 of [APIのご利用について](https://ndlsearch.ndl.go.jp/help/api) asks continuous API users to report their contact details and the nature of their use through the [application form](https://form2.ndl.go.jp/form/pub/ndl07/api) — 「事前の利用申請の要否にかかわらず」, whether or not a prior usage application is required of them. A formal 利用申請 is required only for revenue-generating use; the notification is asked of everyone who accesses continuously.
+**Registering is recommended.** The author filed a notification of continuous use on 19 August 2026 through the [form](https://form2.ndl.go.jp/form/pub/ndl07/api) described in [APIのご利用について](https://ndlsearch.ndl.go.jp/help/api). The library replied that registration is **no longer required, though still welcome**. A formal 利用申請 remains necessary only for revenue-generating use.
 
-Because access is not gated on the filing, nothing in the world will stop you skipping it. So `install.ps1` stops you: it refuses to register the server until the notification is recorded, and writes the date to `NDL-API-NOTIFICATION.txt`.
+Register anyway. It costs a few minutes, it tells the library who is using the interface and for what, and a national library that can see its API being used by researchers has an argument for keeping it funded and open that it does not otherwise have. Scholarly infrastructure survives on evidence of use.
+
+`install.ps1` records the date to `NDL-API-NOTIFICATION.txt` when you pass it:
 
 ```powershell
 .\install.ps1 -NotificationFiled 2026-08-19
 ```
 
-Run it without the flag and it prints the form URL, offers to open it, and exits.
+Run it without the flag and it prints the form URL, offers to open it, and continues with the install.
 
 ## What the server will not do
 
@@ -31,21 +41,21 @@ The undertakings below were filed with the NDL. They are implemented, not aspire
 | Credit on every response | `ATTRIBUTION` plus `provider_credit()` on every envelope |
 | Metadata displayed, not accumulated | no cache, no local store |
 
-Change any of them and you are changing what was declared to a national library. File a supplementary notification first.
+Change any of them and you change what this server declares about itself. Update this table, the module comment in `server.py`, and `NDL-API-NOTIFICATION.txt` in the same commit, so the description a reader checks stays true to what the code does.
 
 ## Providers
 
-Only the five sets declared in the application are reachable. All are NDL-created and CC BY, and none requires a usage application:
+Only the five sets declared in the notification of 19 August 2026 are reachable. All are NDL-created, all are marked ○ in both the 非営利 and 営利 columns of the provider list, and none requires a usage application. Their metadata is governed by 公共データ利用規約（第1.0版）(PDL1.0), which the NDL states to be compatible with CC BY 4.0 — PDL1.0 is the licence, CC BY 4.0 the compatibility claim:
 
 | dpid | 名称 |
 |---|---|
 | `iss-ndl-opac` | 国立国会図書館蔵書 |
-| `iss-ndl-opacnational` | 国立国会図書館全国書誌情報 |
+| `iss-ndl-opac-national` | 国立国会図書館全国書誌情報 |
 | `zassaku` | 国立国会図書館雑誌記事索引 |
 | `zassaku-online` | 国立国会図書館雑誌記事索引オンライン資料編 |
 | `ndl-dl-open` | 国立国会図書館デジタルコレクション（オープンデータ） |
 
-`ndl-dl` and `ndl-dl-online` — the wider Digital Collections — are marked △ on the [provider list](https://ndlsearch.ndl.go.jp/help/api/provider) and require an application that has not been made. A request naming them is refused in process, with a `DPID_NOT_PERMITTED` diagnostic, rather than sent.
+`ndl-dl` and `ndl-dl-online` — the wider Digital Collections — are marked ○ for 非営利 and △ only for 営利 on the [provider list](https://ndlsearch.ndl.go.jp/help/api/provider), so scholarly use needs no usage application. They are out of scope here because they sit outside the set this server declares, and because their metadata carries no open licence — displayable, not redistributable. Adding them is a documentation change in this repository, not an application to the library. A request naming them is refused in process, with a `DPID_NOT_PERMITTED` diagnostic, rather than sent.
 
 ## Tools
 
@@ -72,13 +82,15 @@ Search fields: `title`, `creator`, `publisher`, `subject`, `anywhere`, `ndc`, `i
 
 ## Response format
 
-Every tool returns the response envelope built by `mediation.py` and defined in [`response-schema.json`](response-schema.json), schema version 2.2.0. The module and the schema are vendored byte-identically across `cinii-mcp`, `jstage-mcp`, `korea-scholarship-mcp` and this server, so an envelope from one can be read by a consumer written for another.
+Every tool returns the response envelope built by `mediation.py` and defined in [`response-schema.json`](response-schema.json), schema version 2.3.0. The module and the schema are vendored byte-identically across `cinii-mcp`, `jstage-mcp`, `korea-scholarship-mcp` and this server, so an envelope from one can be read by a consumer written for another.
 
 Search operations carry `searched_for` — the term actually sent, its detected script, and the matching mode — hoisted to the top of the envelope so a relaying client cannot drop it. `ndl_get_record` omits it: a fetch is handed an identifier and chooses no term.
 
 ## Receipts
 
-`mediation.emit()` writes each response envelope to the append-only, hash-chained ledger at `MCP_RECEIPT_LOG`, which `install.ps1` sets to the same file the other servers use. Unset the variable and nothing is written and nothing fails.
+`mediation.emit()` writes each response envelope to the append-only, hash-chained ledger at `MCP_RECEIPT_LOG`. Unset the variable and nothing is written and nothing fails — which is exactly what happened here between 19 and 22 August 2026: the code called `emit()` at every exit while the variable was absent from this server's environment, so three days of queries went unrecorded behind well-formed envelopes. Since schema 2.3.0 the envelope reports it: `RECEIPT_NOT_DEPOSITED` when the variable is unset, `RECEIPT_WRITE_FAILED` when it is set and the write did not land.
+
+`install.ps1` sets the variable, but to `%APPDATA%\Claude\mcp-receipts.jsonl` — **not** the file the other servers write to. A hash chain is per-file, so running the installer without overriding `-ReceiptLog` puts NDL queries in a second, independent chain. Point it at the shared log, or accept that "the log" means two files and say so wherever the deposit is described.
 
 Note what the ledger holds and what it does not: the query, the normalised term, the parameters sent, the timestamp, a SHA-256 over query and parameters, and the identifiers of the records returned. It does not hold the bibliographic records themselves. Logging a query is not accumulating a database, and the undertaking against accumulation is not breached by keeping the receipt — but the distinction is worth stating rather than assuming, because the two look similar from outside.
 
@@ -96,7 +108,7 @@ The reason is evidential. The OpenSearch response format is not documented in th
 
 ## Licence
 
-MIT. Metadata retrieved through this server is CC BY 4.0 from the National Diet Library; the credit line the server emits is the attribution that licence requires, and it should survive into anything you publish from the results.
+MIT, for the server code. Metadata retrieved through this server is governed by 公共データ利用規約（第1.0版）(PDL1.0), read with 「国以外の者」 as 「国立国会図書館以外の者」; the NDL states that condition to be compatible with CC BY 4.0, which is a compatibility claim rather than a grant of CC BY 4.0 itself. The credit line the server emits is the attribution PDL1.0 requires, and it should survive into anything you publish from the results.
 
 ## What has been tested, and what has not
 
