@@ -25,6 +25,11 @@
 
     Idempotent: rerun safely. Only the 'ndl' entry is overwritten.
 
+.PARAMETER ReceiptLog
+    Path to the shared append-only receipt log. Defaults to the file the rest of
+    the server family writes to. A hash chain is per-file: pointing this
+    elsewhere creates a second, independent chain.
+
 .PARAMETER NotificationFiled
     Date the NDL notification was filed, as YYYY-MM-DD. Recorded to
     NDL-API-NOTIFICATION.txt so the check passes on later runs.
@@ -39,6 +44,7 @@
 [CmdletBinding()]
 param(
     [string]$NotificationFiled,
+    [string]$ReceiptLog,
     [string]$PythonVersion = "3.13"
 )
 
@@ -209,7 +215,12 @@ if (-not (Test-Path $ConfigPath)) {
 
 # Match the receipt-ledger settings the other four servers carry, so that NDL
 # queries are logged on the same terms and can go into the same deposit.
-$receiptLog = Join-Path $env:APPDATA "Claude\mcp-receipts.jsonl"
+# The receipt log is shared with the rest of the family: a hash chain is
+# per-file, so a second path means a second, independent chain and "the
+# log" stops naming one thing. Override with -ReceiptLog if that is wanted.
+$receiptLog = if ($ReceiptLog) { $ReceiptLog } else {
+    Join-Path $env:USERPROFILE "Dropbox\MY RESEARCH WRITING\RESEARCH ETHICS\receipts\receipts.jsonl"
+}
 $entry = [ordered]@{
     command = $Python
     args    = @((Join-Path $DeployDir "server.py"))

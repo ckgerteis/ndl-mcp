@@ -72,13 +72,15 @@ Search fields: `title`, `creator`, `publisher`, `subject`, `anywhere`, `ndc`, `i
 
 ## Response format
 
-Every tool returns the response envelope built by `mediation.py` and defined in [`response-schema.json`](response-schema.json), schema version 2.2.0. The module and the schema are vendored byte-identically across `cinii-mcp`, `jstage-mcp`, `korea-scholarship-mcp` and this server, so an envelope from one can be read by a consumer written for another.
+Every tool returns the response envelope built by `mediation.py` and defined in [`response-schema.json`](response-schema.json), schema version 2.3.0. The module and the schema are vendored byte-identically across `cinii-mcp`, `jstage-mcp`, `korea-scholarship-mcp` and this server, so an envelope from one can be read by a consumer written for another.
 
 Search operations carry `searched_for` — the term actually sent, its detected script, and the matching mode — hoisted to the top of the envelope so a relaying client cannot drop it. `ndl_get_record` omits it: a fetch is handed an identifier and chooses no term.
 
 ## Receipts
 
-`mediation.emit()` writes each response envelope to the append-only, hash-chained ledger at `MCP_RECEIPT_LOG`, which `install.ps1` sets to the same file the other servers use. Unset the variable and nothing is written and nothing fails.
+`mediation.emit()` writes each response envelope to the append-only, hash-chained ledger at `MCP_RECEIPT_LOG`. Unset the variable and nothing is written and nothing fails — which is exactly what happened here between 19 and 22 August 2026: the code called `emit()` at every exit while the variable was absent from this server's environment, so three days of queries went unrecorded behind well-formed envelopes. Since schema 2.3.0 the envelope reports it: `RECEIPT_NOT_DEPOSITED` when the variable is unset, `RECEIPT_WRITE_FAILED` when it is set and the write did not land.
+
+`install.ps1` sets the variable, but to `%APPDATA%\Claude\mcp-receipts.jsonl` — **not** the file the other servers write to. A hash chain is per-file, so running the installer without overriding `-ReceiptLog` puts NDL queries in a second, independent chain. Point it at the shared log, or accept that "the log" means two files and say so wherever the deposit is described.
 
 Note what the ledger holds and what it does not: the query, the normalised term, the parameters sent, the timestamp, a SHA-256 over query and parameters, and the identifiers of the records returned. It does not hold the bibliographic records themselves. Logging a query is not accumulating a database, and the undertaking against accumulation is not breached by keeping the receipt — but the distinction is worth stating rather than assuming, because the two look similar from outside.
 
