@@ -4,6 +4,14 @@ An MCP server for searching 国立国会図書館サーチ (NDL Search), operate
 
 Third in a series with [`cinii-mcp`](https://github.com/ckgerteis/cinii-mcp) and [`jstage-mcp`](https://github.com/ckgerteis/jstage-mcp), and sharing their response envelope: typed query and script, matching mode, graduated breadth, per-item `matched_in`, typed diagnostics, a loggable receipt, attribution.
 
+## What this is for
+
+The National Diet Library receives everything published in Japan, and this reaches five of its own catalogues: general holdings, the Japanese National Bibliography, the periodicals index, that index's online-materials companion, and the open-data digital collections.
+
+Use the national bibliography when an imprint fact has to be right — a date, a publisher, an edition statement — because it is the authority other catalogues copy from. The periodicals index reaches article-level records for Japanese magazines and journals going back well beyond what CiNii or J-STAGE hold, which is where prewar and early postwar material becomes searchable. Single records resolve by JP number or NDL bibliographic ID.
+
+Requests are issued one at a time, at a measured pace, under the undertakings filed with the library.
+
 ## Before you run this
 
 **There is no credential.** The NDL search APIs are open. No API key, no application ID, no token, nothing to paste into a config file. If you are waiting for something to arrive before you can use this, you are waiting for something that is not coming.
