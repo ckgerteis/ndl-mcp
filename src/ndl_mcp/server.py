@@ -55,9 +55,9 @@ try:  # mcp SDK 1.x
 except ModuleNotFoundError:  # mcp SDK 2.x removed mcp.server.fastmcp
     from mcp.server.mcpserver import MCPServer as _MCPServer
 
-import mediation as M
+from . import mediation as M
 
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 
 # httpx logs every request URL at INFO. There is no credential in an NDL request,
 # so nothing leaks — but a search term travels in that URL, and the line lands on
@@ -750,5 +750,10 @@ async def ndl_get_record(params: GetRecordInput) -> str:
     return M.emit(env)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Console-script entry point (`ndl-mcp`)."""
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()
