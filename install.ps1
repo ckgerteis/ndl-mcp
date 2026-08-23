@@ -34,10 +34,18 @@
     path will not start this version; rerunning this script replaces it.
 
 .PARAMETER ReceiptLog
-    Path to the append-only receipt log. Defaults to the author's shared log, so
-    that NDL queries join the chain the rest of this server family writes to. A
-    hash chain is per-file: anyone else should pass this and point it at a file
-    of their own.
+    Path to the append-only receipt log. No default is written into this file.
+    Left unset, the installer reads the value from the servers already registered
+    in claude_desktop_config.json and joins the chain they use, falling back to
+    whatever a previous run registered for ndl. If nothing is found anywhere, NDL
+    is registered without it and nothing is deposited, which is what every server
+    in this family does by default.
+
+.PARAMETER ReceiptSession
+    Free-text project or article slug written into every ledger line. As with
+    -ReceiptLog, read from the already-registered servers when not passed, so
+    that NDL queries group with the project rather than under a label of their
+    own.
 
 .PARAMETER NotificationFiled
     Date you registered with the NDL, as YYYY-MM-DD. Recorded to
@@ -56,6 +64,7 @@
 param(
     [string]$NotificationFiled,
     [string]$ReceiptLog,
+    [string]$ReceiptSession,
     [string]$PythonVersion = "3.13"
 )
 
@@ -239,20 +248,71 @@ if (-not (Test-Path $ConfigPath)) {
     }
 }
 
-# Match the receipt-ledger settings the other servers carry, so that NDL queries
-# are logged on the same terms and can go into the same deposit. A hash chain is
-# per-file, so a second path means a second, independent chain and "the log"
-# stops naming one thing. Override with -ReceiptLog.
-$receiptLog = if ($ReceiptLog) { $ReceiptLog } else {
-    Join-Path $env:USERPROFILE "Dropbox\MY RESEARCH WRITING\RESEARCH ETHICS\receipts\receipts.jsonl"
-}
-$entry = [ordered]@{
-    command = $ConsoleScript
-    env     = [ordered]@{
-        MCP_RECEIPT_LOG     = $receiptLog
-        MCP_RECEIPT_SESSION = "ndl-mcp"
+# The receipt settings are read from the servers already registered rather than
+# written into this file. A hash chain is per-file and the session slug is what
+# groups a project's queries, so the only correct values are the ones the rest of
+# the family is already using — and a path compiled in here would be one more
+# thing to drift out of step with them, besides publishing a private folder in a
+# public repository. -ReceiptLog and -ReceiptSession override. If nothing is
+# registered and nothing is passed, both are left unset: the ledger is off unless
+# MCP_RECEIPT_LOG is set, and that is the documented default of every server here.
+
+$siblingLogs     = @()
+$siblingSessions = @()
+$ownLog = $null; $ownSession = $null
+foreach ($prop in $config.mcpServers.PSObject.Properties) {
+    $e = $prop.Value.env
+    if (-not $e) { continue }
+    if ($prop.Name -eq "ndl") {
+        # What a previous run of this installer left. Kept as a fallback so that
+        # rerunning is idempotent: an install that quietly dropped a working
+        # deposit would be worse than one that failed.
+        if ($e.MCP_RECEIPT_LOG)     { $ownLog     = [string]$e.MCP_RECEIPT_LOG }
+        if ($e.MCP_RECEIPT_SESSION) { $ownSession = [string]$e.MCP_RECEIPT_SESSION }
+        continue
     }
+    if ($e.MCP_RECEIPT_LOG)     { $siblingLogs     += [string]$e.MCP_RECEIPT_LOG }
+    if ($e.MCP_RECEIPT_SESSION) { $siblingSessions += [string]$e.MCP_RECEIPT_SESSION }
 }
+$distinctLogs     = @($siblingLogs     | Sort-Object -Unique)
+$distinctSessions = @($siblingSessions | Sort-Object -Unique)
+
+if ($ReceiptLog) {
+    $receiptLog = $ReceiptLog
+    Write-Host "    receipt log     : -ReceiptLog"
+} elseif ($distinctLogs.Count -eq 1) {
+    $receiptLog = $distinctLogs[0]
+    Write-Host "    receipt log     : joining the chain $($siblingLogs.Count) registered server(s) already write to"
+} elseif ($distinctLogs.Count -gt 1) {
+    throw "The registered servers write to $($distinctLogs.Count) different receipt logs:`n  $($distinctLogs -join "`n  ")`nA hash chain is per-file, so there is no single chain to join and guessing would put NDL in one of two records. Pass -ReceiptLog to say which."
+} elseif ($ownLog) {
+    $receiptLog = $ownLog
+    Write-Host "    receipt log     : keeping the one already registered for ndl"
+} else {
+    $receiptLog = $null
+    Write-Host "    receipt log     : none registered and none passed" -ForegroundColor Yellow
+}
+
+if ($ReceiptSession) {
+    $receiptSession = $ReceiptSession
+} elseif ($distinctSessions.Count -eq 1) {
+    $receiptSession = $distinctSessions[0]
+    Write-Host "    session slug    : $receiptSession (from the registered servers)"
+} elseif ($distinctSessions.Count -gt 1) {
+    throw "The registered servers use $($distinctSessions.Count) different session slugs:`n  $($distinctSessions -join "`n  ")`nThe slug is what groups a project's queries in the deposit. Pass -ReceiptSession to say which NDL belongs to."
+} elseif ($ownSession) {
+    $receiptSession = $ownSession
+    Write-Host "    session slug    : $receiptSession (already registered for ndl)"
+} else {
+    $receiptSession = $null
+}
+
+$envBlock = [ordered]@{}
+if ($receiptLog)     { $envBlock["MCP_RECEIPT_LOG"]     = $receiptLog }
+if ($receiptSession) { $envBlock["MCP_RECEIPT_SESSION"] = $receiptSession }
+
+$entry = [ordered]@{ command = $ConsoleScript }
+if ($envBlock.Count) { $entry["env"] = $envBlock }
 
 $serversHash = @{}
 foreach ($prop in $config.mcpServers.PSObject.Properties) {
@@ -277,7 +337,16 @@ Write-Host ""
 Write-Host "Registered:" -ForegroundColor Green
 Write-Host "  command : $ConsoleScript"
 Write-Host "  version : $installed"
-Write-Host "  receipts: $receiptLog"
+if ($receiptLog) {
+    Write-Host "  receipts: $receiptLog"
+    Write-Host "  session : $receiptSession"
+} else {
+    Write-Host "  receipts: NOT DEPOSITED - no MCP_RECEIPT_LOG set" -ForegroundColor Yellow
+    Write-Host "            Searches will run and leave no record. Rerun with" -ForegroundColor Yellow
+    Write-Host "            -ReceiptLog <path> -ReceiptSession <slug> to deposit," -ForegroundColor Yellow
+    Write-Host "            or register another server of this family first and" -ForegroundColor Yellow
+    Write-Host "            this installer will join whatever chain it uses." -ForegroundColor Yellow
+}
 Write-Host ""
 Write-Host "Providers reachable (all CC BY, no application required):" -ForegroundColor Green
 Write-Host "  iss-ndl-opac, iss-ndl-opac-national, zassaku, zassaku-online, ndl-dl-open"

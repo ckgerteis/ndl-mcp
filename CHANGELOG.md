@@ -43,6 +43,23 @@ version number and returns nothing citable for it.
 - **README gained the install and Claude Desktop sections it never had.** The
   file documented the undertakings, the providers and the rate limit in detail
   and never said how to install the thing.
+- **The installer no longer carries a receipt-log path of its own.** Until now
+  it defaulted `MCP_RECEIPT_LOG` to a path inside the author's Dropbox folder —
+  correct for one machine, wrong for every other, and a private folder layout
+  published in a public repository. It now reads `MCP_RECEIPT_LOG` and
+  `MCP_RECEIPT_SESSION` from the servers already registered in
+  `claude_desktop_config.json`, which is the only way to be sure of joining the
+  chain in use rather than a compiled-in guess at it. `MCP_RECEIPT_SESSION` was
+  also being set to `ndl-mcp`, where the rest of the family uses a project slug;
+  the slug is what groups a project's queries in the deposit, so NDL was
+  labelling itself out of the group it belongs to.
+- Order of preference: `-ReceiptLog` / `-ReceiptSession`, then the value the
+  registered servers share, then whatever a previous run registered for `ndl`,
+  then nothing. Disagreement between registered servers stops the install rather
+  than resolving to one of them. Nothing found anywhere leaves the variables
+  unset and says so, which matches the documented default: the ledger is off
+  unless `MCP_RECEIPT_LOG` is set. All five paths were exercised against
+  synthetic configurations.
 
 ## 1.0.1 — 2026-08-22
 
