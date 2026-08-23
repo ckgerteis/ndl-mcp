@@ -321,15 +321,36 @@ def reserved_word_hits(values: dict[str, Optional[str]]) -> list[str]:
 
 
 def build_cql(fields: dict[str, Optional[Any]], dpids: list[str]) -> str:
-    """Assemble the CQL string actually sent. Providers are OR'd; fields AND'd."""
+    """Assemble the CQL string actually sent.
+
+    Several providers are expressed as REPEATED dpid clauses joined by AND, not
+    as an OR group. That reads backwards and is what NDL accepts: repeating dpid
+    unions the providers and deduplicates across them.
+
+        anywhere="X" AND dpid="iss-ndl-opac" AND dpid="zassaku"   ->  54,182
+        dpid="iss-ndl-opac" AND anywhere="X"                      ->  19,251
+        dpid="zassaku"      AND anywhere="X"                      ->  34,931
+
+    The obvious construction is rejected outright. Every parenthesised form was
+    tried against the live API on 23 August 2026 and each returned SRU diagnostic
+    info:srw/diagnostic/1/1, "illegal query syntax":
+
+        (dpid="a" OR dpid="b") AND anywhere="X"
+        anywhere="X" AND (dpid="a" OR dpid="b")
+        dpid="a" OR dpid="b" AND anywhere="X"
+
+    Until this was corrected, every tool that searches more than one provider —
+    ndl_search_articles over the two periodical indexes, and ndl_search_all over
+    all five — returned API_ERROR for every query ever put to it. The
+    single-provider tools were unaffected, which is why it survived: the server
+    looked as though it worked.
+    """
     clauses: list[str] = []
-    if dpids:
-        provider = " OR ".join(f"dpid={_cql_value(d)}" for d in dpids)
-        clauses.append(f"({provider})" if len(dpids) > 1 else provider)
     for name, value in fields.items():
         if value is None or value == "":
             continue
         clauses.append(f"{name}={_cql_value(str(value))}")
+    clauses.extend(f"dpid={_cql_value(d)}" for d in dpids)
     return " AND ".join(clauses)
 
 

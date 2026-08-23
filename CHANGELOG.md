@@ -63,6 +63,22 @@ version number and returns nothing citable for it.
   (mcp 2.x `MCPServer`). Under mcp 1.x, whose `FastMCP` takes no `version`, the
   field still reports the SDK's version rather than the server's — the argument
   is passed only where it is accepted.
+- **Two of the six tools had never worked.** `build_cql` expressed several
+  providers as `(dpid="a" OR dpid="b") AND field="x"`. NDL rejects that outright
+  — SRU diagnostic `info:srw/diagnostic/1/1`, "illegal query syntax" — so
+  `ndl_search_articles`, which spans the two periodical indexes, and
+  `ndl_search_all`, which spans all five providers, returned `API_ERROR` for
+  every query ever put to them. The four single-provider paths were unaffected,
+  which is exactly why it survived: the server looked as though it worked.
+  Found by running the tools against the live API on 23 August 2026.
+- **NDL's idiom is a repeated `dpid`, joined by AND, and it means union.** It
+  reads backwards and it is what the interface accepts. Verified against the
+  live API: `anywhere="労働運動" AND dpid="iss-ndl-opac"` returns 19,251,
+  `dpid="zassaku"` alone returns 34,931, and the two together return 54,182 —
+  the sum, so a union rather than an intersection, deduplicated where a record
+  sits in more than one provider. `ndl_search_articles` now answers 34,931 for
+  that term and `ndl_search_all` 82,644 for `title="戦後"`, where both
+  previously answered nothing at all.
 - **`install.ps1` is now the family installer** described above, replacing the
   NDL-only script. The NDL notification step survives inside it and runs whenever
   `ndl` is among the servers being installed. Its vendoring step became a
