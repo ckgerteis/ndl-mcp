@@ -476,7 +476,13 @@ def _parse_sru(xml_text: str) -> tuple[int, list[dict[str, Any]], Optional[dict]
 # Server + inputs
 # ==============================================================================
 
-mcp = _MCPServer("ndl")
+# mcp 1.x's FastMCP takes no `version`; 2.x's MCPServer does. Passed where it is
+# accepted, because a server that answers `initialize` with an empty version
+# string cannot be cited by the disclosure that has to name the build it ran.
+try:
+    mcp = _MCPServer("ndl", version=__version__)
+except TypeError:  # mcp SDK 1.x
+    mcp = _MCPServer("ndl")
 
 
 class SearchInput(BaseModel):
