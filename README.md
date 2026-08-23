@@ -55,6 +55,23 @@ missing. Do not use `ndl-mcp --help` as the check: unknown arguments are
 ignored, the server starts, reads end-of-input and exits 0, so it reports
 success whatever the state of the code.
 
+### The whole family at once
+
+`install.ps1` — vendored byte-identical into all six repositories — installs any
+or all of `cinii`, `jstage`, `ndl`, `korea_scholarship`, `openalex` and
+`semantic_scholar` into one environment, asks once for a receipts folder, and
+registers them all against it.
+
+```powershell
+.\install.ps1                                   # all six
+.\install.ps1 -Servers ndl -ReceiptsDir "D:\research\receipts"
+```
+
+It reads a sibling checkout where one exists and fetches the rest from GitHub,
+carries across any credentials already registered rather than asking again, and
+stops rather than guessing if the servers already registered disagree about where
+the receipts go.
+
 ### Claude Desktop
 
 `install.ps1` writes this entry for you. By hand, add it to
@@ -144,13 +161,13 @@ Search operations carry `searched_for` — the term actually sent, its detected 
 
 ## Receipts
 
-`mediation.emit()` writes each response envelope to the append-only, hash-chained ledger at `MCP_RECEIPT_LOG`. Unset the variable and nothing is written and nothing fails — which is exactly what happened here between 19 and 22 August 2026: the code called `emit()` at every exit while the variable was absent from this server's environment, so three days of queries went unrecorded behind well-formed envelopes. Since schema 2.3.0 the envelope reports it: `RECEIPT_NOT_DEPOSITED` when the variable is unset, `RECEIPT_WRITE_FAILED` when it is set and the write did not land.
+`mediation.emit()` writes each response envelope to an append-only, hash-chained ledger. Unset the receipt variables and nothing is written and nothing fails — which is exactly what happened here between 19 and 22 August 2026: the code called `emit()` at every exit while no variable was set in this server's environment, so three days of queries went unrecorded behind well-formed envelopes. Since schema 2.3.0 the envelope reports it: `RECEIPT_NOT_DEPOSITED` when nothing is configured, `RECEIPT_WRITE_FAILED` when it is and the write did not land.
 
-`install.ps1` sets the variable, and holds no path of its own. It reads `MCP_RECEIPT_LOG` and `MCP_RECEIPT_SESSION` from the servers already registered in `claude_desktop_config.json` and registers NDL with the same values, so that NDL queries join the chain the rest of the family writes to rather than starting a second one — a hash chain is per-file, and two files mean "the log" stops naming one thing. The slug matters for the same reason in a different register: it is what groups a project's queries in the deposit, so NDL takes the project's slug rather than a label of its own.
+**`MCP_RECEIPT_DIR` names a folder, and this server writes `ndl.jsonl` inside it.** One file per server, because appending is read-the-last-hash-then-write and the lock around it does not hold between processes: six servers pointed at one file will fork the chain when two answer at once. Measured — six processes, 150 lines, fourteen forks. `MCP_RECEIPT_LOG` still names a single file and is honoured when `MCP_RECEIPT_DIR` is unset.
 
-The order is: `-ReceiptLog` / `-ReceiptSession` if passed, then the value the other registered servers share, then whatever a previous run registered for `ndl`, then nothing. Where the registered servers disagree — two different logs, or two different slugs — the installer stops and asks rather than guessing, because either answer would put NDL in the wrong record. Where nothing is found at all, NDL is registered without the variables and says so in yellow: the ledger is off unless `MCP_RECEIPT_LOG` is set, and that is the documented default of every server in this family.
+`install.ps1` holds no path of its own. It asks for the folder, offering whatever the already-registered servers use and otherwise `%APPDATA%\Claude\mcp-receipts`, and registers every server it installs against the same one. `MCP_RECEIPT_SESSION` — the project slug that groups a project's queries — is taken from the registered servers or asked for, never invented per server. Where the registered servers disagree about either, the install stops and asks rather than putting NDL in one of two records. (Earlier revisions of this README said the installer defaulted to `%APPDATA%\Claude\mcp-receipts.jsonl`. It did not; the statement described an installer that no longer existed. What it did default to, until 1.1.0, was a path inside the author's own Dropbox folder, written into a public repository.)
 
-(Earlier revisions of this README said the installer defaulted to `%APPDATA%\Claude\mcp-receipts.jsonl`. It did not; the statement described an installer that no longer existed. What it did default to, until 1.1.0, was a path inside the author's own Dropbox folder, written into a public repository.)
+Verify with `ndl-mcp-ledger verify-dir <folder>`, or write the citable manifest with `ndl-mcp-ledger manifest <folder>`. A failure is typed: a **fork** means concurrent writers and every line is still present; **tamper** means a line no longer hashes to its own content. The two are not the same finding and are no longer reported as though they were.
 
 Note what the ledger holds and what it does not: the query, the normalised term, the parameters sent, the timestamp, a SHA-256 over query and parameters, and the identifiers of the records returned. It does not hold the bibliographic records themselves. Logging a query is not accumulating a database, and the undertaking against accumulation is not breached by keeping the receipt — but the distinction is worth stating rather than assuming, because the two look similar from outside.
 

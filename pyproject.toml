@@ -46,4 +46,5 @@ include = [
     "/CHANGELOG.md",
     "/response-schema.json",
     "/install.ps1",
+    "/.env.example",
 ]

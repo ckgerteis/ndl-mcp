@@ -14,6 +14,36 @@ it is citable by commit alone. Tagging waits on confirmation that this
 repository's Zenodo webhook is live: a release that mints nothing spends a
 version number and returns nothing citable for it.
 
+- **A receipts folder, and one chain per server.** `ledger.py` 1.1.0 adds
+  `MCP_RECEIPT_DIR`: point it at a directory and each server writes its own
+  `<server>.jsonl` inside it. `MCP_RECEIPT_LOG` still names a single file and is
+  honoured when `MCP_RECEIPT_DIR` is unset, so nothing existing breaks.
+- **Why, precisely.** Appending is read-the-last-hash-then-write and `_LOCK` is a
+  `threading.Lock`, which holds within one process and not between several. Six
+  servers are six processes. Six of them writing 150 lines to one file produced
+  **fourteen forks** — two lines claiming the same predecessor, over and over.
+  That was measured, not inferred, and it means the family's shared log was never
+  safe to verify as one chain. One writer per file removes the race rather than
+  mitigating it.
+- **`verify_chain()` now types its failures.** It reported everything as
+  `prev_hash mismatch`. It distinguishes a **fork** (concurrent writers; every
+  line still present, and the file is several chains rather than one), a
+  **missing** line, a **reordering**, and **tamper** (a line that does not hash to
+  its own content). Only the last is a claim about honesty, and a reader given one
+  label for all four cannot tell a misconfiguration from interference.
+- **`verify_dir()` and a manifest.** One pass over a receipts folder returns
+  per-file verdicts, line counts, first and last timestamps and terminal hashes,
+  plus combined totals by server, script and session. `<dist>-ledger manifest
+  <dir>` writes it to `manifest.json`. That file is what a disclosure cites: one
+  description of the deposit rather than six assertions to reconcile.
+- `<dist>-ledger` gains `verify-dir` and `manifest`, and `verify` now exits
+  non-zero when a chain does not verify.
+- **`install.ps1` installs the family.** Vendored byte-identical into all six
+  repositories: it installs any or all of the six into one environment, asks once
+  for the receipts folder and the session slug, and registers every server against
+  the same pair. It prefers a sibling checkout to the network, carries across
+  credentials already registered rather than asking again, and stops rather than
+  guessing where the registered servers disagree about either value.
 - **`src/` layout. Breaking: the server is started by console script, not by
   path.** `server.py`, `mediation.py` and `ledger.py` move to `src/ndl_mcp/` and install as a
   package. The flat layout installed them as *top-level* modules, so any two
@@ -33,13 +63,20 @@ version number and returns nothing citable for it.
   (mcp 2.x `MCPServer`). Under mcp 1.x, whose `FastMCP` takes no `version`, the
   field still reports the SDK's version rather than the server's — the argument
   is passed only where it is accepted.
-- **`install.ps1` rewritten for the package layout.** It installs the wheel into
-  the shared venv and registers the console script, rather than copying three
-  files into `mcp-servers\\ndl_mcp` and registering a path. The vendoring step
-  is now a *verification* step: `mediation.py` and `ledger.py` are checked
-  byte-for-byte against the installed `cinii_mcp` copies and the install stops
-  if they differ, instead of silently overwriting this repository's copies with
-  whatever is on the machine.
+- **`install.ps1` is now the family installer** described above, replacing the
+  NDL-only script. The NDL notification step survives inside it and runs whenever
+  `ndl` is among the servers being installed. Its vendoring step became a
+  *verification* step: it asserts `mediation.py` and `ledger.py` match the
+  installed `cinii_mcp` copies byte for byte and stops if they differ, rather
+  than silently overwriting this repository's copies with whatever is on the
+  machine.
+- **The installer no longer carries a receipt path of its own.** Until now it
+  defaulted `MCP_RECEIPT_LOG` to a path inside the author's Dropbox folder —
+  correct for one machine, wrong for every other, and a private folder layout
+  published in a public repository. It also set `MCP_RECEIPT_SESSION` to
+  `ndl-mcp`, where the rest of the family uses a project slug; the slug groups a
+  project's queries, so NDL was filing itself out of the group it belongs to.
+  Both are now asked for once and applied to every server installed.
 - **README gained the install and Claude Desktop sections it never had.** The
   file documented the undertakings, the providers and the rate limit in detail
   and never said how to install the thing.
