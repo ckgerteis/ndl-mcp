@@ -71,6 +71,12 @@ version number and returns nothing citable for it.
   every query ever put to them. The four single-provider paths were unaffected,
   which is exactly why it survived: the server looked as though it worked.
   Found by running the tools against the live API on 23 August 2026.
+- **"Record does not exist" is NDL's way of saying zero, not a fault**, and the
+  passthrough that treats it so is now verified rather than merely read. Every
+  provider answers that way for a term with no hits. The server reports
+  `total: 0` with `ZERO_CONJUNCTION`, not `API_ERROR` — which is the distinction
+  the envelope exists to preserve. `ndl_get_record` verified against a live
+  identifier at the same time. Only the backoff path remains unexercised.
 - **NDL's idiom is a repeated `dpid`, joined by AND, and it means union.** It
   reads backwards and it is what the interface accepts. Verified against the
   live API: `anywhere="労働運動" AND dpid="iss-ndl-opac"` returns 19,251,

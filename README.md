@@ -198,4 +198,10 @@ Verified against the live API on 19 August 2026:
 - `RESERVED_WORD_IN_QUERY`: `War AND Peace` caught, `War and Peace` passed.
 - The rate limiter, involuntarily — see HTTP 429 above.
 
-**Not verified against the live API, and read rather than run:** the "Record does not exist" passthrough, `ndl_get_record`, and the backoff path. Testing stopped at the 429 rather than continuing, because characterising an undisclosed rate limit by probing it is precisely the 継続して大量のアクセス the terms warn about, and the point of this server is not to be the thing the National Diet Library has to block. Exercise those paths in ordinary use, a query at a time.
+Verified against the live API on 23 August 2026, closing two rows that had been read rather than run:
+
+- **The "Record does not exist" passthrough.** That string is not a fault. It is how NDL answers a search that matched nothing, and it answers that way for every provider — `zassaku`, `zassaku-online`, `iss-ndl-opac` and `ndl-dl-open` all return it for a term with no hits. The server maps it to `total: 0` with a `ZERO_CONJUNCTION` diagnostic rather than to `API_ERROR`, which is the distinction the whole envelope exists to preserve: a search that found nothing is not a search that failed.
+- **`ndl_get_record`.** `jpno=71009951`, taken from a national-bibliography result, resolves to one record with an `OK` diagnostic.
+- **Multi-provider search**, after the CQL correction — `ndl_search_articles` returns 23,766 for `title="労働運動"`, matching `dpid="zassaku"` alone, because `zassaku-online` holds nothing under that title. The union total is a count, not a floor.
+
+**Still not verified, and read rather than run:** the backoff path. Testing stopped at the 429 rather than continuing, because characterising an undisclosed rate limit by probing it is precisely the 継続して大量のアクセス the terms warn about, and the point of this server is not to be the thing the National Diet Library has to block. It will be exercised in ordinary use, a query at a time.
