@@ -38,6 +38,17 @@ version number and returns nothing citable for it.
   description of the deposit rather than six assertions to reconcile.
 - `<dist>-ledger` gains `verify-dir` and `manifest`, and `verify` now exits
   non-zero when a chain does not verify.
+- **`install.ps1` installs this server by default, not the family.** These are
+  six independent packages — none imports another, none depends on another, and
+  each installs alone. The installer defaulted to all six, so cloning one
+  repository and running it would have registered five servers nobody asked for
+  and fetched them from GitHub. It now resolves the default from the repository
+  it sits in; `-All` opts into the family and `-Servers` names a subset.
+- The verification step now **asserts that `ledger.py` and `mediation.py` are
+  byte-identical across everything it installed** and stops if they are not.
+  Nothing else enforces that invariant at install time, and two envelope
+  versions in one environment is precisely the sort of thing that would be found
+  later, in a deposit.
 - **`install.ps1` installs the family.** Vendored byte-identical into all six
   repositories: it installs any or all of the six into one environment, asks once
   for the receipts folder and the session slug, and registers every server against
@@ -87,11 +98,11 @@ version number and returns nothing citable for it.
   previously answered nothing at all.
 - **`install.ps1` is now the family installer** described above, replacing the
   NDL-only script. The NDL notification step survives inside it and runs whenever
-  `ndl` is among the servers being installed. Its vendoring step became a
-  *verification* step: it asserts `mediation.py` and `ledger.py` match the
-  installed `cinii_mcp` copies byte for byte and stops if they differ, rather
-  than silently overwriting this repository's copies with whatever is on the
-  machine.
+  `ndl` is among the servers being installed. The old vendoring step, which
+  copied `mediation.py` and `ledger.py` over this repository's copies from
+  whatever was on the machine, is gone: each package now carries its own and the
+  installer asserts they match across everything it installed rather than
+  overwriting anything.
 - **The installer no longer carries a receipt path of its own.** Until now it
   defaulted `MCP_RECEIPT_LOG` to a path inside the author's Dropbox folder —
   correct for one machine, wrong for every other, and a private folder layout
