@@ -85,7 +85,7 @@ the absolute path to `.venv/bin/ndl-mcp`. There is no credential to supply.
     "ndl": {
       "command": "C:\\path\\to\\.venv\\Scripts\\ndl-mcp.exe",
       "env": {
-        "MCP_RECEIPT_LOG": "C:\\path\\to\\receipts.jsonl",
+        "MCP_RECEIPT_DIR": "C:\\path\\to\\receipts",
         "MCP_RECEIPT_SESSION": "project-or-article-slug"
       }
     }
