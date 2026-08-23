@@ -7,28 +7,37 @@
        asks continuous API users to report their contact details and the nature of
        their use, whether or not a prior application is required. This installer
        will not register the server until that step has been recorded, because the
-       undertakings in server.py were filed with the library and the code exists to
-       keep them.
+       undertakings in the server were filed with the library and the code exists
+       to keep them.
 
        There is NO credential to wait for. The NDL search APIs are open: no key, no
        application ID, no token. Nothing is issued and nothing is pasted in. Filing
        is a duty, not a gate on access — which is exactly why an installer has to
        hold the door, since nothing else will.
 
-    1. Vendors mediation.py and ledger.py byte-identical from cinii-mcp.
+    1. VERIFIES that this repository's mediation.py and ledger.py are byte-identical
+       to the installed cinii_mcp copies, and stops if they are not. Earlier
+       revisions copied cinii's files over this repository's — which silently made
+       the working tree disagree with the commit it was built from.
     2. Resolves a Python interpreter: the shared mcp-servers venv if present.
-    3. Installs runtime dependencies.
-    4. Deploys server.py + the vendored modules to %APPDATA%\Claude\mcp-servers\ndl_mcp.
-    5. Smoke-tests the import.
-    6. Backs up claude_desktop_config.json and merges an 'ndl' entry, with the
-       receipt ledger switched on to match the other servers.
+    3. Installs the package (and its dependencies) into that interpreter.
+    4. Smoke-tests the installed package, asserting the filed undertakings and
+       that the receipt ledger is actually reachable.
+    5. Backs up claude_desktop_config.json and merges an 'ndl' entry pointing at
+       the ndl-mcp console script, with the receipt ledger switched on to match
+       the other servers.
 
     Idempotent: rerun safely. Only the 'ndl' entry is overwritten.
 
+    Since 1.1.0 this installs a package rather than copying three files into
+    %APPDATA%\Claude\mcp-servers\ndl_mcp. A pre-1.1.0 'ndl' entry registered by
+    path will not start this version; rerunning this script replaces it.
+
 .PARAMETER ReceiptLog
-    Path to the shared append-only receipt log. Defaults to the file the rest of
-    the server family writes to. A hash chain is per-file: pointing this
-    elsewhere creates a second, independent chain.
+    Path to the append-only receipt log. Defaults to the author's shared log, so
+    that NDL queries join the chain the rest of this server family writes to. A
+    hash chain is per-file: anyone else should pass this and point it at a file
+    of their own.
 
 .PARAMETER NotificationFiled
     Date you registered with the NDL, as YYYY-MM-DD. Recorded to
@@ -52,12 +61,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ProjectRoot  = $PSScriptRoot
-$ServerFile   = Join-Path $ProjectRoot "server.py"
+$PackageDir   = Join-Path $ProjectRoot "src\ndl_mcp"
+$ServerFile   = Join-Path $PackageDir "server.py"
 $MarkerFile   = Join-Path $ProjectRoot "NDL-API-NOTIFICATION.txt"
 $ServersRoot  = Join-Path $env:APPDATA "Claude\mcp-servers"
 $SharedPython = Join-Path $ServersRoot ".venv\Scripts\python.exe"
-$DeployDir    = Join-Path $ServersRoot "ndl_mcp"
-$CiniiDir     = Join-Path $ServersRoot "cinii_mcp"
 $ConfigPath   = Join-Path $env:APPDATA "Claude\claude_desktop_config.json"
 $FormUrl      = "https://form2.ndl.go.jp/form/pub/ndl07/api"
 $TermsUrl     = "https://ndlsearch.ndl.go.jp/help/api"
@@ -72,7 +80,7 @@ function Write-Step($msg) {
 Write-Step "NDL API notification"
 
 if (-not (Test-Path $ServerFile)) {
-    throw "server.py not found in $ProjectRoot. Place install.ps1 alongside server.py."
+    throw "server.py not found at $ServerFile. Run install.ps1 from the repository root."
 }
 
 if ($NotificationFiled) {
@@ -92,7 +100,7 @@ registration is no longer required, though still welcome. Providers used:
 iss-ndl-opac, iss-ndl-opac-national, zassaku, zassaku-online, ndl-dl-open — all
 NDL-created, none requiring a usage application for scholarly work.
 
-Undertakings given, and implemented in server.py:
+Undertakings given, and implemented in src/ndl_mcp/server.py:
   serial requests, no concurrency        -> _rate_lock held across each request
   minimum one-second interval            -> MIN_REQUEST_INTERVAL
   a cap on records per search            -> MAX_RECORDS, no auto-pagination
@@ -131,21 +139,7 @@ if (-not (Test-Path $MarkerFile)) {
     Get-Content $MarkerFile -TotalCount 2 | ForEach-Object { Write-Host "      $_" }
 }
 
-# -- 1. Vendor mediation.py and ledger.py ----------------------------------
-
-Write-Step "Vendoring mediation.py and ledger.py from cinii-mcp"
-
-foreach ($name in @("mediation.py", "ledger.py")) {
-    $src = Join-Path $CiniiDir $name
-    if (-not (Test-Path $src)) {
-        throw "$name not found at $src. ndl-mcp vendors these byte-identical from cinii-mcp rather than keeping a second copy; install cinii-mcp first."
-    }
-    Copy-Item $src (Join-Path $ProjectRoot $name) -Force
-    $hash = (Get-FileHash $src -Algorithm SHA256).Hash.Substring(0, 16)
-    Write-Host "    $name  sha256:$hash..."
-}
-
-# -- 2. Python ---------------------------------------------------------------
+# -- 1. Python ---------------------------------------------------------------
 
 Write-Step "Resolving Python"
 
@@ -162,45 +156,69 @@ if (Test-Path $SharedPython) {
     Write-Host "    Using a project-local venv at $VenvDir."
 }
 
-Write-Step "Installing dependencies"
+$ScriptsDir = Split-Path $Python -Parent
+
+# -- 2. Verify the vendored modules ------------------------------------------
+#
+# mediation.py and ledger.py are vendored byte-identical across this family. The
+# check runs against the installed cinii_mcp package rather than a sibling
+# checkout, and it reports rather than repairs: a divergence here means the
+# commit this is being installed from disagrees with the family, and copying
+# over it would hide that instead of surfacing it.
+
+Write-Step "Verifying the vendored modules against cinii_mcp"
+
+$ciniiDir = & $Python -c "import importlib.util,os,sys; s=importlib.util.find_spec('cinii_mcp'); sys.stdout.write(os.path.dirname(s.origin) if s and s.origin else '')" 2>$null
+if (-not $ciniiDir) {
+    Write-Host "    cinii_mcp is not installed in this interpreter; nothing to compare against." -ForegroundColor Yellow
+    Write-Host "    The copies in this repository are used as they stand." -ForegroundColor Yellow
+} else {
+    foreach ($name in @("mediation.py", "ledger.py")) {
+        $mine  = Join-Path $PackageDir $name
+        $their = Join-Path $ciniiDir  $name
+        if (-not (Test-Path $their)) { throw "$name not found in the installed cinii_mcp at $ciniiDir." }
+        $a = (Get-FileHash $mine  -Algorithm SHA256).Hash
+        $b = (Get-FileHash $their -Algorithm SHA256).Hash
+        if ($a -ne $b) {
+            throw "$name differs from the installed cinii_mcp copy.`n  this repo : $a`n  cinii_mcp : $b`nThese are vendored byte-identical by design. Reconcile them in a commit rather than at install time."
+        }
+        Write-Host "    $name  sha256:$($a.Substring(0,16))...  matches cinii_mcp"
+    }
+}
+
+# -- 3. Install ---------------------------------------------------------------
+
+Write-Step "Installing ndl-mcp into $ScriptsDir"
+
 & $Python -m pip install --upgrade --quiet pip
-& $Python -m pip install --quiet "mcp[cli]>=1.2.0" "httpx>=0.27.0" "pydantic>=2.7.0"
+& $Python -m pip install --quiet $ProjectRoot
 if ($LASTEXITCODE -ne 0) { throw "pip install failed." }
 
-# -- 3. Deploy ---------------------------------------------------------------
+$ConsoleScript = Join-Path $ScriptsDir "ndl-mcp.exe"
+if (-not (Test-Path $ConsoleScript)) { throw "ndl-mcp console script not found at $ConsoleScript after install." }
 
-Write-Step "Deploying to $DeployDir"
-
-if (-not (Test-Path $DeployDir)) { New-Item -ItemType Directory -Path $DeployDir | Out-Null }
-foreach ($name in @("server.py", "mediation.py", "ledger.py")) {
-    $target = Join-Path $DeployDir $name
-    if (Test-Path $target) {
-        $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
-        Copy-Item $target "$target.pre-$stamp.bak"
-    }
-    Copy-Item (Join-Path $ProjectRoot $name) $target -Force
-}
-Write-Host "    server.py, mediation.py, ledger.py deployed."
+$installed = (& $Python -c "import ndl_mcp; print(ndl_mcp.__version__)").Trim()
+Write-Host "    ndl-mcp $installed installed; console script at $ConsoleScript"
 
 # -- 4. Smoke test -----------------------------------------------------------
 
-Write-Step "Verifying the server imports cleanly"
+Write-Step "Verifying the installed package"
 
 $probe = Join-Path $env:TEMP "ndl_mcp_probe_$PID.py"
 @"
-import sys
-sys.path.insert(0, r'$DeployDir')
-import server
+from ndl_mcp import server, mediation as M
 tools = [n for n in dir(server) if n.startswith('ndl_')]
 assert server.MIN_REQUEST_INTERVAL >= 1.0, 'interval below what was filed with the NDL'
 assert server.MAX_RECORDS <= 500, 'record cap above the NDL ceiling'
 assert set(server.ALL_DPIDS) <= set(server.PROVIDERS), 'undeclared provider'
+assert M.ledger_available(), 'ledger not reachable: receipts would be dropped silently'
 print('OK -', len(tools), 'tools:', ', '.join(sorted(tools)))
 print('OK - interval', server.MIN_REQUEST_INTERVAL, 's, cap', server.MAX_RECORDS, 'records')
+print('OK - ledger reachable; deposit enabled:', M.deposit_enabled())
 "@ | Out-File -FilePath $probe -Encoding utf8
 try {
     & $Python $probe
-    if ($LASTEXITCODE -ne 0) { throw "Server import check failed." }
+    if ($LASTEXITCODE -ne 0) { throw "Installed-package check failed." }
 } finally {
     Remove-Item $probe -ErrorAction SilentlyContinue
 }
@@ -221,17 +239,15 @@ if (-not (Test-Path $ConfigPath)) {
     }
 }
 
-# Match the receipt-ledger settings the other four servers carry, so that NDL
-# queries are logged on the same terms and can go into the same deposit.
-# The receipt log is shared with the rest of the family: a hash chain is
-# per-file, so a second path means a second, independent chain and "the
-# log" stops naming one thing. Override with -ReceiptLog if that is wanted.
+# Match the receipt-ledger settings the other servers carry, so that NDL queries
+# are logged on the same terms and can go into the same deposit. A hash chain is
+# per-file, so a second path means a second, independent chain and "the log"
+# stops naming one thing. Override with -ReceiptLog.
 $receiptLog = if ($ReceiptLog) { $ReceiptLog } else {
     Join-Path $env:USERPROFILE "Dropbox\MY RESEARCH WRITING\RESEARCH ETHICS\receipts\receipts.jsonl"
 }
 $entry = [ordered]@{
-    command = $Python
-    args    = @((Join-Path $DeployDir "server.py"))
+    command = $ConsoleScript
     env     = [ordered]@{
         MCP_RECEIPT_LOG     = $receiptLog
         MCP_RECEIPT_SESSION = "ndl-mcp"
@@ -259,8 +275,8 @@ if (-not (Test-Path $configDir)) { New-Item -ItemType Directory -Path $configDir
 Write-Step "Done"
 Write-Host ""
 Write-Host "Registered:" -ForegroundColor Green
-Write-Host "  command : $Python"
-Write-Host "  args    : $(Join-Path $DeployDir 'server.py')"
+Write-Host "  command : $ConsoleScript"
+Write-Host "  version : $installed"
 Write-Host "  receipts: $receiptLog"
 Write-Host ""
 Write-Host "Providers reachable (all CC BY, no application required):" -ForegroundColor Green

@@ -28,6 +28,62 @@ Register anyway. It costs a few minutes, it tells the library who is using the i
 
 Run it without the flag and it prints the form URL, offers to open it, and continues with the install.
 
+## Install
+
+The package installs an `ndl-mcp` console script. It is namespaced, so it shares
+one environment with `cinii-mcp`, `jstage-mcp`, `korea-scholarship-mcp`,
+`openalex-mcp` and `semantic-scholar-mcp` without colliding.
+
+On Windows, `install.ps1` does the whole job — dependencies, install into the
+shared `mcp-servers` venv, a smoke test that asserts the undertakings below, and
+the Claude Desktop entry:
+
+```powershell
+.\install.ps1 -NotificationFiled 2026-08-19
+```
+
+By hand, on any platform:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install .
+.venv/bin/python -c "import ndl_mcp; print(ndl_mcp.__version__)"
+```
+
+That import fails loudly if the package or one of its vendored modules is
+missing. Do not use `ndl-mcp --help` as the check: unknown arguments are
+ignored, the server starts, reads end-of-input and exits 0, so it reports
+success whatever the state of the code.
+
+### Claude Desktop
+
+`install.ps1` writes this entry for you. By hand, add it to
+`%APPDATA%\Claude\claude_desktop_config.json` under `mcpServers`, pointing at
+the console script in the environment you installed into. On macOS or Linux use
+the absolute path to `.venv/bin/ndl-mcp`. There is no credential to supply.
+
+```json
+{
+  "mcpServers": {
+    "ndl": {
+      "command": "C:\\path\\to\\.venv\\Scripts\\ndl-mcp.exe",
+      "env": {
+        "MCP_RECEIPT_LOG": "C:\\path\\to\\receipts.jsonl",
+        "MCP_RECEIPT_SESSION": "project-or-article-slug"
+      }
+    }
+  }
+}
+```
+
+**Changed in 1.1.0.** Earlier versions were registered by path —
+`"command": "…\\python.exe", "args": ["…\\server.py"]`. That entry will not
+start this version, because `server.py` is now a module inside a package rather
+than a script beside its imports. Replace it with the console script above.
+
+Restart Claude Desktop. The six tools should appear under "ndl" in the tool
+list.
+
 ## What the server will not do
 
 The undertakings below were filed with the NDL. They are implemented, not aspired to, and the installer's smoke test asserts the first three:
@@ -41,7 +97,7 @@ The undertakings below were filed with the NDL. They are implemented, not aspire
 | Credit on every response | `ATTRIBUTION` plus `provider_credit()` on every envelope |
 | Metadata displayed, not accumulated | no cache, no local store |
 
-Change any of them and you change what this server declares about itself. Update this table, the module comment in `server.py`, and `NDL-API-NOTIFICATION.txt` in the same commit, so the description a reader checks stays true to what the code does.
+Change any of them and you change what this server declares about itself. Update this table, the module comment in `src/ndl_mcp/server.py`, and `NDL-API-NOTIFICATION.txt` in the same commit, so the description a reader checks stays true to what the code does.
 
 ## Providers
 
@@ -90,7 +146,7 @@ Search operations carry `searched_for` — the term actually sent, its detected 
 
 `mediation.emit()` writes each response envelope to the append-only, hash-chained ledger at `MCP_RECEIPT_LOG`. Unset the variable and nothing is written and nothing fails — which is exactly what happened here between 19 and 22 August 2026: the code called `emit()` at every exit while the variable was absent from this server's environment, so three days of queries went unrecorded behind well-formed envelopes. Since schema 2.3.0 the envelope reports it: `RECEIPT_NOT_DEPOSITED` when the variable is unset, `RECEIPT_WRITE_FAILED` when it is set and the write did not land.
 
-`install.ps1` sets the variable, but to `%APPDATA%\Claude\mcp-receipts.jsonl` — **not** the file the other servers write to. A hash chain is per-file, so running the installer without overriding `-ReceiptLog` puts NDL queries in a second, independent chain. Point it at the shared log, or accept that "the log" means two files and say so wherever the deposit is described.
+`install.ps1` sets the variable. Its default is the author's shared receipt log, so that NDL queries join the chain the rest of the family writes to rather than starting a second one — a hash chain is per-file, and two files mean "the log" stops naming one thing. Anyone else installing this should pass `-ReceiptLog` and point it somewhere of their own. (Earlier revisions of this README said the installer defaulted to `%APPDATA%\Claude\mcp-receipts.jsonl`. It did not; the statement described an installer that no longer existed.)
 
 Note what the ledger holds and what it does not: the query, the normalised term, the parameters sent, the timestamp, a SHA-256 over query and parameters, and the identifiers of the records returned. It does not hold the bibliographic records themselves. Logging a query is not accumulating a database, and the undertaking against accumulation is not breached by keeping the receipt — but the distinction is worth stating rather than assuming, because the two look similar from outside.
 

@@ -7,9 +7,47 @@ the text and, where a version DOI exists, cited by it.
 Releases earlier than those below are on the repository's releases page; this
 file begins where the record is precise enough to be worth writing down.
 
+## 1.1.0 — 2026-08-23
+
+**Not released.** No tag was cut and no Zenodo record exists for this version, so
+it is citable by commit alone. Tagging waits on confirmation that this
+repository's Zenodo webhook is live: a release that mints nothing spends a
+version number and returns nothing citable for it.
+
+- **`src/` layout. Breaking: the server is started by console script, not by
+  path.** `server.py`, `mediation.py` and `ledger.py` move to `src/ndl_mcp/` and install as a
+  package. The flat layout installed them as *top-level* modules, so any two
+  servers of this family in one environment overwrote each other — and
+  `pip check` reported nothing wrong. The later install simply won, silently,
+  and the survivor answered under the wrong server's name. All six now coexist:
+  verified by installing every wheel into one environment and driving each
+  through `initialize` and `tools/list`.
+- **Claude Desktop entries must change.** Replace
+  `"command": "…\\python.exe", "args": ["…\\server.py"]` with
+  `"command": "…\\Scripts\\ndl-mcp.exe"`. An existing entry keeps working
+  against an existing flat deployment and will fail against this one.
+- `python -m ndl_mcp` and a `ndl-mcp-ledger` console script are installed
+  alongside it.
+- **The server reports its build.** `initialize` was answered with an empty
+  `serverInfo.version`. It now carries `__version__` where the SDK accepts one
+  (mcp 2.x `MCPServer`). Under mcp 1.x, whose `FastMCP` takes no `version`, the
+  field still reports the SDK's version rather than the server's — the argument
+  is passed only where it is accepted.
+- **`install.ps1` rewritten for the package layout.** It installs the wheel into
+  the shared venv and registers the console script, rather than copying three
+  files into `mcp-servers\\ndl_mcp` and registering a path. The vendoring step
+  is now a *verification* step: `mediation.py` and `ledger.py` are checked
+  byte-for-byte against the installed `cinii_mcp` copies and the install stops
+  if they differ, instead of silently overwriting this repository's copies with
+  whatever is on the machine.
+- **README gained the install and Claude Desktop sections it never had.** The
+  file documented the undertakings, the providers and the rate limit in detail
+  and never said how to install the thing.
+
 ## 1.0.1 — 2026-08-22
 
-First tagged release.
+**Never tagged.** This version was merged to `main` and no release was cut for
+it; it has no tag and no DOI.
 
 - **Corrected the national-bibliography data provider ID.** The declared value
   `iss-ndl-opacnational` names no provider; the NDL spells it
