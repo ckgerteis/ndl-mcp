@@ -55,9 +55,9 @@ try:  # mcp SDK 1.x
 except ModuleNotFoundError:  # mcp SDK 2.x removed mcp.server.fastmcp
     from mcp.server.mcpserver import MCPServer as _MCPServer
 
-import mediation as M
+from . import mediation as M
 
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 
 # httpx logs every request URL at INFO. There is no credential in an NDL request,
 # so nothing leaks — but a search term travels in that URL, and the line lands on
@@ -321,15 +321,36 @@ def reserved_word_hits(values: dict[str, Optional[str]]) -> list[str]:
 
 
 def build_cql(fields: dict[str, Optional[Any]], dpids: list[str]) -> str:
-    """Assemble the CQL string actually sent. Providers are OR'd; fields AND'd."""
+    """Assemble the CQL string actually sent.
+
+    Several providers are expressed as REPEATED dpid clauses joined by AND, not
+    as an OR group. That reads backwards and is what NDL accepts: repeating dpid
+    unions the providers and deduplicates across them.
+
+        anywhere="X" AND dpid="iss-ndl-opac" AND dpid="zassaku"   ->  54,182
+        dpid="iss-ndl-opac" AND anywhere="X"                      ->  19,251
+        dpid="zassaku"      AND anywhere="X"                      ->  34,931
+
+    The obvious construction is rejected outright. Every parenthesised form was
+    tried against the live API on 23 August 2026 and each returned SRU diagnostic
+    info:srw/diagnostic/1/1, "illegal query syntax":
+
+        (dpid="a" OR dpid="b") AND anywhere="X"
+        anywhere="X" AND (dpid="a" OR dpid="b")
+        dpid="a" OR dpid="b" AND anywhere="X"
+
+    Until this was corrected, every tool that searches more than one provider —
+    ndl_search_articles over the two periodical indexes, and ndl_search_all over
+    all five — returned API_ERROR for every query ever put to it. The
+    single-provider tools were unaffected, which is why it survived: the server
+    looked as though it worked.
+    """
     clauses: list[str] = []
-    if dpids:
-        provider = " OR ".join(f"dpid={_cql_value(d)}" for d in dpids)
-        clauses.append(f"({provider})" if len(dpids) > 1 else provider)
     for name, value in fields.items():
         if value is None or value == "":
             continue
         clauses.append(f"{name}={_cql_value(str(value))}")
+    clauses.extend(f"dpid={_cql_value(d)}" for d in dpids)
     return " AND ".join(clauses)
 
 
@@ -476,7 +497,13 @@ def _parse_sru(xml_text: str) -> tuple[int, list[dict[str, Any]], Optional[dict]
 # Server + inputs
 # ==============================================================================
 
-mcp = _MCPServer("ndl")
+# mcp 1.x's FastMCP takes no `version`; 2.x's MCPServer does. Passed where it is
+# accepted, because a server that answers `initialize` with an empty version
+# string cannot be cited by the disclosure that has to name the build it ran.
+try:
+    mcp = _MCPServer("ndl", version=__version__)
+except TypeError:  # mcp SDK 1.x
+    mcp = _MCPServer("ndl")
 
 
 class SearchInput(BaseModel):
@@ -750,5 +777,10 @@ async def ndl_get_record(params: GetRecordInput) -> str:
     return M.emit(env)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Console-script entry point (`ndl-mcp`)."""
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()
