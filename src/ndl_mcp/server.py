@@ -280,12 +280,38 @@ def _error_diag(exc: Exception) -> dict:
 # CQL
 # ==============================================================================
 #
-# NDL's SRU rejects a query outright when a search term contains the bare tokens
-# AND or OR (仕様書 3.2). That is a property of the corpus a historian will hit —
+# NDL's SRU rejects a query outright when a search term carries a bare AND or OR
+# between words. That is a property of the corpus a historian will hit —
 # English-language titles — so it is caught here and reported as a typed
 # diagnostic rather than sent and returned as a parse failure.
+#
+# The rule was measured against the live API on 27 August 2026, because the
+# earlier version of it was wrong in both directions:
+#
+#   anywhere="cats and dogs"    rejected      anywhere="cats AND dogs"  rejected
+#   anywhere="cats And dogs"    rejected      anywhere="cats or dogs"   rejected
+#   anywhere="cats OR dogs"     rejected
+#   anywhere="cats not dogs"    96 records    anywhere="cats NOT dogs"  96 records
+#   anywhere="war not peace"    351 records   title="not for sale"      119 records
+#
+# So: AND and OR are reserved in ANY case, and NOT is not reserved at all. The
+# previous pattern was case-sensitive, which let every lowercase "and" through to
+# be refused by NDL and reported as API_ERROR — a rejected search wearing the
+# face of an empty one. It also caught NOT, refusing in process a query the
+# library answers perfectly well.
+#
+# Position matters too, and the pattern follows what was measured rather than
+# what would be tidy:
+#
+#   anywhere="and Peace"   14,375 records    leading, tolerated
+#   anywhere="Peace and"   rejected          trailing
+#   anywhere="cats and dogs"  rejected       infix
+#
+# Hence whitespace required before, whitespace or end-of-string after. A word
+# that merely contains the letters is untouched: Thailand, Andorra and notation
+# all return records and none of them matches.
 
-_RESERVED = re.compile(r"(?:^|\s)(AND|OR|NOT)(?:\s|$)")
+_RESERVED = re.compile(r"\s(and|or)(?:\s|$)", re.IGNORECASE)
 
 # Index name -> whether NDL matches it partially. Kept for the record; the server
 # does not offer indexes outside this table.
@@ -597,9 +623,12 @@ async def _search(operation: str, params: SearchInput, dpids: list[str]) -> str:
             params={}, matching_mode=MATCHING_MODE, total=0, start=1, items=[],
             diagnostics=[M.diag(
                 "error", "RESERVED_WORD_IN_QUERY",
-                "NDL Search rejects a query whose terms contain a bare AND, OR or NOT; "
-                f"found in: {', '.join(offending)}.",
-                "Remove or replace the word; the query was not sent.",
+                "NDL Search rejects a query whose terms carry a bare AND or OR between "
+                f"words, in any case; found in: {', '.join(offending)}.",
+                "The query was not sent, so this is not a result. Drop the conjunction — "
+                "\"Civil Information and Education Section\" is refused, \"Civil "
+                "Information Education Section\" is not — or search a distinctive part "
+                "of the phrase. NOT is safe and is not caught.",
             )],
             attribution=attribution, coverage_note=COVERAGE_NOTE,
         )
