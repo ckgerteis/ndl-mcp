@@ -155,7 +155,13 @@ Search fields: `title`, `creator`, `publisher`, `subject`, `anywhere`, `ndc`, `i
 
 ## Two things that will bite
 
-**An uppercase `AND`, `OR` or `NOT` inside a search term makes NDL reject the whole query.** Not "returns nothing" — rejects. The rule is case-sensitive as the specification states it: `War AND Peace` is caught, `War and Peace` passes. The server checks before sending and returns a `RESERVED_WORD_IN_QUERY` diagnostic naming the offending field, rather than letting the library answer with a parse failure.
+**A bare `and` or `or` between words makes NDL reject the whole query, in any case.** Not "returns nothing" — rejects. `NOT` is not reserved and is left alone.
+
+This was measured against the live API on 27 August 2026, because the rule stated here until then was wrong in both directions. It claimed the check was case-sensitive and that `War and Peace` passes. It does not: `anywhere="War and Peace"` is refused where `anywhere="War Peace"` returns 5,025. What "passed" was the guard, not the library — and the query then came back as `API_ERROR` with a total of zero, which reads exactly like an absence. The same sentence also treated `NOT` as reserved, so the server declined in process a query NDL answers: `anywhere="cats NOT dogs"` returns 96 records.
+
+Position matters, and the check follows what the API does rather than what would be tidy: `anywhere="and Peace"` is tolerated (14,375), `anywhere="Peace and"` is refused, `anywhere="cats and dogs"` is refused. So whitespace is required before the word, and whitespace or the end of the term after it. A word that merely contains the letters is untouched — Thailand, Andorra and notation all return records.
+
+The server checks before sending and returns a `RESERVED_WORD_IN_QUERY` diagnostic naming the offending field, rather than letting the library answer with a parse failure. The remedy is usually to drop the conjunction: `"Civil Information and Education Section"` is refused, `"Civil Information Education Section"` returns 21,690.
 
 **NDL enforces a rate limit it will not quantify, and answers HTTP 429.** The help page says only 「同時リクエスト数には制限を設けています」 and declines to publish a figure. In testing on 19 August 2026 a 429 arrived at well under one sustained request per second — so the one-second floor filed with the library is a minimum, not a guarantee. A 429 buys one backoff, honouring `Retry-After`, and then the server stops rather than pressing. It reports `RATE_LIMITED`, deliberately distinct from `API_ERROR`, because the two mean different things to a reader: a rate-limited search has an *unknown* result, not an empty one, and must never be written up as an absence.
 
@@ -203,13 +209,14 @@ Verified against the live API on 19 August 2026:
 - DC-NDL parsing, including the manifestation-stub filter. NDL returns two `BibResource` elements per record; taking both doubled the result set with blanks until the filter went in.
 - `searched_for` reports the term chosen, not the assembled CQL, so its script detection is meaningful; the exact CQL is carried in `query.params` and is fixed by the receipt hash.
 - The `DPID_NOT_PERMITTED` guard: a request naming `ndl-dl` is refused in process.
-- `RESERVED_WORD_IN_QUERY`: `War AND Peace` caught, `War and Peace` passed.
+- `RESERVED_WORD_IN_QUERY`, as it then stood: `War AND Peace` caught, `War and Peace` passed **the guard**. What the library did with it afterwards was not checked, and the entry should not have been written as though it had been — see 27 August below.
 - The rate limiter, involuntarily — see HTTP 429 above.
 
 Verified against the live API on 23 August 2026, closing two rows that had been read rather than run:
 
 - **The "Record does not exist" passthrough.** That string is not a fault. It is how NDL answers a search that matched nothing, and it answers that way for every provider — `zassaku`, `zassaku-online`, `iss-ndl-opac` and `ndl-dl-open` all return it for a term with no hits. The server maps it to `total: 0` with a `ZERO_CONJUNCTION` diagnostic rather than to `API_ERROR`, which is the distinction the whole envelope exists to preserve: a search that found nothing is not a search that failed.
 - **`ndl_get_record`.** `jpno=71009951`, taken from a national-bibliography result, resolves to one record with an `OK` diagnostic.
+- **The reserved-word rule, corrected.** `and` and `or` are refused by NDL in any case; `NOT` is not reserved at all. Measured across seventeen cases: `cats and dogs`, `cats AND dogs`, `cats And dogs`, `cats or dogs` and `cats OR dogs` all refused; `cats not dogs`, `cats NOT dogs`, `war not peace` and `title="not for sale"` all answered; `Thailand`, `Andorra` and `notation` unaffected. The guard now matches that behaviour exactly, having previously both missed every lowercase conjunction and refused a word the library accepts.
 - **Multi-provider search**, after the CQL correction — `ndl_search_articles` returns 23,766 for `title="労働運動"`, matching `dpid="zassaku"` alone, because `zassaku-online` holds nothing under that title. The union total is a count, not a floor.
 
 **Still not verified, and read rather than run:** the backoff path. Testing stopped at the 429 rather than continuing, because characterising an undisclosed rate limit by probing it is precisely the 継続して大量のアクセス the terms warn about, and the point of this server is not to be the thing the National Diet Library has to block. It will be exercised in ordinary use, a query at a time.
