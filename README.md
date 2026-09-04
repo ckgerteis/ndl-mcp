@@ -220,3 +220,5 @@ Verified against the live API on 23 August 2026, closing two rows that had been 
 - **Multi-provider search**, after the CQL correction — `ndl_search_articles` returns 23,766 for `title="労働運動"`, matching `dpid="zassaku"` alone, because `zassaku-online` holds nothing under that title. The union total is a count, not a floor.
 
 **Still not verified, and read rather than run:** the backoff path. Testing stopped at the 429 rather than continuing, because characterising an undisclosed rate limit by probing it is precisely the 継続して大量のアクセス the terms warn about, and the point of this server is not to be the thing the National Diet Library has to block. It will be exercised in ordinary use, a query at a time.
+
+Verified on 4 September 2026 with `tests/smoke_stdio.py`, which starts the installed console script over stdio, performs the MCP handshake, checks `tools/list` against the tool table above, and with `RUN_LIVE=1 … <tool> '<json params>'` makes one live call: `ndl_search_books` for 軍艦島 answered 524 records with an `OK` diagnostic.

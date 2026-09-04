@@ -1,5 +1,5 @@
 """
-NDL Search MCP Server (v1.0.1)
+NDL Search MCP Server (v1.1.0)
 ==============================
 An MCP server for searching 国立国会図書館サーチ (NDL Search), operated by the
 National Diet Library of Japan, over the SRU searchRetrieve interface.
@@ -268,11 +268,22 @@ def _error_diag(exc: Exception) -> dict:
             "NDL Search returned a response that could not be parsed as XML.",
             "The service may be returning an error page; retry once.",
         )
+    if isinstance(exc, httpx.HTTPError):
+        return M.diag(
+            "error",
+            "TRANSPORT_ERROR",
+            f"Could not reach NDL Search: {type(exc).__name__}.",
+            "Network or timeout failure; the query was not answered.",
+        )
+    # Anything else was raised after the service answered — a numberOfRecords
+    # that is not a number, an unexpected element shape — and is a malformed
+    # answer, not a failure to reach the service. Labelling it TRANSPORT_ERROR
+    # would tell the reader to retry a request that was in fact answered.
     return M.diag(
         "error",
-        "TRANSPORT_ERROR",
-        f"Could not reach NDL Search: {type(exc).__name__}.",
-        "Network or timeout failure; the query was not answered.",
+        "API_ERROR",
+        f"NDL Search answered, but the response could not be read: {type(exc).__name__}.",
+        "Retry once; if it persists, the response shape has changed and the parser needs updating.",
     )
 
 
