@@ -7,14 +7,91 @@ the text and, where a version DOI exists, cited by it.
 Releases earlier than those below are on the repository's releases page; this
 file begins where the record is precise enough to be worth writing down.
 
-## 1.1.0 — 2026-08-23
+## 1.1.1 — 2026-09-04
 
-**Not released.** No tag was cut and no Zenodo record exists for this version, so
-it is citable by commit alone. Tagging waits on confirmation that this
-repository's Zenodo webhook is live: a release that mints nothing spends a
-version number and returns nothing citable for it.
+No change to the code. This release exists so that the archived record carries
+an introduction to the tool rather than a list of patches, and so that the
+archive holds a release published after archiving was switched on.
 
-### Since 2026-09-04, still under 1.1.0 (unreleased)
+### What ndl-mcp is
+
+ndl-mcp connects an AI assistant such as Claude Desktop to NDL Search
+(国立国会図書館サーチ), the public catalog of the National Diet Library of Japan.
+It is an MCP server: a small program that runs on your own computer, which the
+assistant calls when it wants to search the library. The program sends the query
+to NDL over the library's SRU interface, exactly as a browser would, and hands
+the records back for the assistant to read. There is no account and no key. The
+NDL search APIs are open, and the library has confirmed that registration of
+continuous use is welcome but no longer required.
+
+Six tools reach five of the library's own catalogs: the general holdings
+(`ndl_search_books`), the Japanese National Bibliography
+(`ndl_search_national_bibliography`), the 雑誌記事索引 periodicals index in both
+its print and online-materials sets (`ndl_search_articles`), the open-data
+digital collections (`ndl_search_digital_open`), all five at once
+(`ndl_search_all`), and a single record by JP number or NDL bibliographic ID
+(`ndl_get_record`). The national bibliography is the place to check an imprint
+fact — a date, a publisher, an edition statement — because it is the authority
+other catalogs copy from. The periodicals index reaches article-level records
+for Japanese magazines and journals going back well beyond what CiNii or J-STAGE
+hold, which is where prewar and early postwar material becomes searchable.
+
+The server was built to the undertakings filed with the library when continuous
+use was notified on 19 August 2026, and the code enforces them rather than
+recommending them: requests go out one at a time with at least one second
+between them; each search is capped at 100 records with no automatic paging; the
+harvesting interface is not implemented; only the five declared, openly licensed
+data providers are reachable, and a request naming any other is refused before
+it is sent; every response carries the library's credit; nothing is cached. It
+also knows what the library itself rejects. A lowercase `and` or `or` between
+words makes NDL refuse the whole query, so those are caught in the server, with a
+diagnostic, before they fail silently at the other end.
+
+### Why every answer comes with a record
+
+An assistant can turn an English question into several Japanese renderings, try
+each against the catalog, and read hundreds of records in minutes. What it
+cannot do on its own is tell you afterwards which rendering it actually sent,
+whether a result of zero meant an empty literature or a term the catalog does
+not index, or whether the library answered at all. So every response from this
+server carries a structured record written by the program, not the model: the
+term actually sent and its script (kanji, kana, romaji), how the catalog matched
+it, how many records exist, and typed diagnostics that keep a failed connection
+distinct from an empty result. Optionally, each query is also appended to a
+tamper-evident ledger on your own machine, one file per server, so that a search
+standing behind a footnote can be named, cited by version, verified, and rerun
+by someone else.
+
+### Installing
+
+Each GitHub release carries a Claude Desktop bundle (`.mcpb`) for Windows, Apple
+Silicon Macs, and Linux; download it, open it, and Claude Desktop asks only for a
+folder to keep the search log in. The bundle needs a Python 3.10 or later
+installation on the machine. From a command line, `pip install
+"git+https://github.com/ckgerteis/ndl-mcp@v1.1.1"` installs the server pinned
+to this release, and the README explains how to register it by hand. Nothing is
+on a package index; the release version is the thing to cite in a methods note.
+
+ndl-mcp is one of three companions for Japanese sources, with
+[cinii-mcp](https://github.com/ckgerteis/cinii-mcp) for CiNii Research and
+[jstage-mcp](https://github.com/ckgerteis/jstage-mcp) for J-STAGE, and one of six
+in the [bibliograph](https://github.com/ckgerteis/bibliograph-mcp) suite. All
+share one response format and one ledger, so results from different catalogs can
+be read side by side and verified as one deposit.
+
+### Changed in 1.1.1
+
+- Version metadata only: `pyproject.toml`, the MCPB manifest, `__version__`,
+  `CITATION.cff`, `.zenodo.json`, and the pinned install lines in the README.
+- The 1.1.0 entry below no longer describes itself as unreleased; it was tagged
+  and released on 2026-09-04.
+
+## 1.1.0 — 2026-09-04
+
+Tagged and released on GitHub on 2026-09-04 (the version was first written on
+2026-08-23 and held until the release pipeline existed).
+
+### Added on 2026-09-04, released with the tag
 
 - **Released on GitHub as a package.** `.github/workflows/release.yml` runs
   on a `vX.Y.Z` tag: tests on three OSes, wheel and sdist, one Claude

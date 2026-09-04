@@ -1,5 +1,5 @@
 """
-NDL Search MCP Server (v1.1.0)
+NDL Search MCP Server (v1.1.1)
 ==============================
 An MCP server for searching 国立国会図書館サーチ (NDL Search), operated by the
 National Diet Library of Japan, over the SRU searchRetrieve interface.
@@ -57,7 +57,7 @@ except ModuleNotFoundError:  # mcp SDK 2.x removed mcp.server.fastmcp
 
 from . import mediation as M
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 # httpx logs every request URL at INFO. There is no credential in an NDL request,
 # so nothing leaks — but a search term travels in that URL, and the line lands on
