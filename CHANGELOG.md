@@ -14,6 +14,21 @@ it is citable by commit alone. Tagging waits on confirmation that this
 repository's Zenodo webhook is live: a release that mints nothing spends a
 version number and returns nothing citable for it.
 
+### Since 2026-09-04, still under 1.1.0 (unreleased)
+
+- **A malformed answer is `API_ERROR`, not `TRANSPORT_ERROR`.** `_error_diag`
+  labelled every exception that was neither an HTTP status nor an XML parse
+  failure as a transport failure — including a `numberOfRecords` that would
+  not parse as an integer, raised after NDL had answered. The reader was told
+  the service was unreachable when it had in fact replied. Only `httpx`
+  transport exceptions are `TRANSPORT_ERROR` now; anything else raised after
+  a response is `API_ERROR` with the exception type named.
+- `tests/smoke_stdio.py`: stdio handshake, `tools/list` checked against the
+  README table, optional live call. Vendored byte-identical across the six.
+- `response-schema.json`'s self-description said 2.2.0 and named four
+  servers; it now says 2.3.0 and names six. Text only; the schema is unchanged.
+- Module docstring banner corrected from v1.0.1 to v1.1.0.
+
 - **A receipts folder, and one chain per server.** `ledger.py` 1.1.0 adds
   `MCP_RECEIPT_DIR`: point it at a directory and each server writes its own
   `<server>.jsonl` inside it. `MCP_RECEIPT_LOG` still names a single file and is

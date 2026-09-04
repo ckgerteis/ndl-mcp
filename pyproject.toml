@@ -40,6 +40,7 @@ packages = ["src/ndl_mcp"]
 [tool.hatch.build.targets.sdist]
 include = [
     "/src",
+    "/tests",
     "/README.md",
     "/LICENSE",
     "/CITATION.cff",
