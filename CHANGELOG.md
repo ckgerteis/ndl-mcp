@@ -7,6 +7,13 @@ the text and, where a version DOI exists, cited by it.
 Releases earlier than those below are on the repository's releases page; this
 file begins where the record is precise enough to be worth writing down.
 
+## 1.1.3 — 2026-09-04
+
+- The MCP SDK's per-request INFO lines ("Processing request of type
+  ListToolsRequest") no longer reach stderr. Noise rather than a leak — no
+  term or credential is in them — but the stream Claude Desktop captures
+  should carry faults only, as it does for the rest of the family.
+
 ## 1.1.2 — 2026-09-04
 
 - **Periodicals-index records come back as articles, with their periodical.**
@@ -86,7 +93,7 @@ Each GitHub release carries a Claude Desktop bundle (`.mcpb`) for Windows, Apple
 Silicon Macs, and Linux; download it, open it, and Claude Desktop asks only for a
 folder to keep the search log in. The bundle needs a Python 3.10 or later
 installation on the machine. From a command line, `pip install
-"git+https://github.com/ckgerteis/ndl-mcp@v1.1.2"` installs the server pinned
+"git+https://github.com/ckgerteis/ndl-mcp@v1.1.3"` installs the server pinned
 to the current release, and the README explains how to register it by hand. Nothing is
 on a package index; the release version is the thing to cite in a methods note.
 

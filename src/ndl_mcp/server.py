@@ -1,5 +1,5 @@
 """
-NDL Search MCP Server (v1.1.2)
+NDL Search MCP Server (v1.1.3)
 ==============================
 An MCP server for searching 国立国会図書館サーチ (NDL Search), operated by the
 National Diet Library of Japan, over the SRU searchRetrieve interface.
@@ -57,13 +57,16 @@ except ModuleNotFoundError:  # mcp SDK 2.x removed mcp.server.fastmcp
 
 from . import mediation as M
 
-__version__ = "1.1.2"
+__version__ = "1.1.3"
 
 # httpx logs every request URL at INFO. There is no credential in an NDL request,
 # so nothing leaks — but a search term travels in that URL, and the line lands on
 # the stderr Claude Desktop captures. Mute it, as the rest of the family does.
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
+# The MCP SDK logs every request it handles at INFO ("Processing request of
+# type ListToolsRequest"). Noise, not a leak; still, stderr should carry faults only.
+logging.getLogger("mcp").setLevel(logging.WARNING)
 
 # ==============================================================================
 # Configuration
