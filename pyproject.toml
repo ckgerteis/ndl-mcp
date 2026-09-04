@@ -8,7 +8,32 @@ license = { text = "MIT" }
 authors = [
     { name = "Christopher Gerteis", email = "christopher.gerteis@gmail.com" },
 ]
-keywords = ["mcp", "ndl", "national-diet-library", "sru", "japanese-studies"]
+keywords = [
+    "bibliographic-search",
+    "digital-humanities",
+    "japanese-studies",
+    "mcp",
+    "model-context-protocol",
+    "national-diet-library",
+    "ndl",
+    "query-receipts",
+    "scholarly-metadata",
+    "sru",
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Text Processing :: Indexing",
+]
 
 dependencies = [
     "mcp[cli]>=1.2.0",
@@ -16,12 +41,19 @@ dependencies = [
     "pydantic>=2.7.0",
 ]
 
+[project.optional-dependencies]
+test = ["pytest>=8", "jsonschema>=4"]
+
 [project.scripts]
 ndl-mcp = "ndl_mcp:main"
 ndl-mcp-ledger = "ndl_mcp.ledger:_cli"
 
 [project.urls]
 Homepage = "https://github.com/ckgerteis/ndl-mcp"
+Repository = "https://github.com/ckgerteis/ndl-mcp"
+Changelog = "https://github.com/ckgerteis/ndl-mcp/blob/main/CHANGELOG.md"
+Issues = "https://github.com/ckgerteis/ndl-mcp/issues"
+Suite = "https://github.com/ckgerteis/bibliograph-mcp"
 
 [build-system]
 requires = ["hatchling"]
@@ -47,5 +79,7 @@ include = [
     "/CHANGELOG.md",
     "/response-schema.json",
     "/install.ps1",
+    "/install.py",
+    "/mcpb",
     "/.env.example",
 ]
