@@ -30,19 +30,31 @@ Run it without the flag and it prints the form URL, offers to open it, and conti
 
 ## Install
 
-The package installs an `ndl-mcp` console script. It is namespaced, so it shares
-one environment with `cinii-mcp`, `jstage-mcp`, `korea-scholarship-mcp`,
-`openalex-mcp` and `semantic-scholar-mcp` without colliding.
+Three routes. All three give you the same server; pick by how much you want to see of it.
 
-On Windows, `install.ps1` does the whole job — dependencies, install into the
-shared `mcp-servers` venv, a smoke test that asserts the undertakings below, and
-the Claude Desktop entry:
+### One click: the Claude Desktop bundle
 
-```powershell
-.\install.ps1 -NotificationFiled 2026-08-19
+Download the `.mcpb` for your platform from the [latest release](https://github.com/ckgerteis/ndl-mcp/releases/latest) and open it; Claude Desktop installs it. Claude Desktop asks only for a receipts folder at install time. The bundle carries every library it needs, but not Python itself: a Python 3.10+ interpreter must be on the machine (`python` on Windows, `python3` on macOS and Linux).
+
+### From GitHub, pinned to a release
+
+```bash
+pip install "git+https://github.com/ckgerteis/ndl-mcp@v1.1.0"
+# or, without an environment of your own:
+uvx --from "git+https://github.com/ckgerteis/ndl-mcp@v1.1.0" ndl-mcp
 ```
 
-By hand, on any platform:
+installs the `ndl-mcp` console script and `ndl-mcp-ledger`. The tag is the thing to cite; `@main` gets whatever is current. Then register it in Claude Desktop (below), or let `install.py` do that.
+
+### The whole family
+
+```bash
+pip install "git+https://github.com/ckgerteis/bibliograph-mcp@v1.0.0" && bibliograph install
+```
+
+installs all six servers and registers them together — one receipts folder, credentials asked for once. See [bibliograph-mcp](https://github.com/ckgerteis/bibliograph-mcp). From a checkout of this repository, `python install.py` does the same for this server alone, `python install.py --all` for the six, on Windows, macOS and Linux; `install.ps1` remains for Windows.
+
+### From source
 
 ```bash
 python3 -m venv .venv
@@ -63,7 +75,7 @@ complete install of this server and nothing else.
 
 They do share three things: a response envelope, a query ledger, and — if you
 run more than one — a receipts folder. `install.ps1` is vendored byte-identical
-into all six and handles that. **It installs this server by default**, because
+into all six and handles that on Windows; `install.py` is its cross-platform port. **Both install this server by default**, because
 cloning one repository is not a request for five more.
 
 ```powershell
