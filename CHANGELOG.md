@@ -7,6 +7,24 @@ the text and, where a version DOI exists, cited by it.
 Releases earlier than those below are on the repository's releases page; this
 file begins where the record is precise enough to be worth writing down.
 
+## 1.1.2 — 2026-09-04
+
+- **Periodicals-index records come back as articles, with their periodical.**
+  NDL states the material type only in the attributes of an empty element
+  (`<dcndl:materialType rdf:resource=".../ndltype/Article" rdfs:label="記事・論文"/>`),
+  names the host periodical as `dcndl:publicationName`, the issue as
+  `dcndl:issue` and the pages as `dcndl:pageRange`. The parser read element
+  text and the book-record field names, so every 雑誌記事索引 record was typed
+  `book` and returned with no journal, issue or pages — a bibliographic
+  citation could not be built from it. Found on 2026-09-04 by reading a live
+  answer against the claim that this server reaches the article index; the
+  claim was true and the record was useless. Both layouts are now read, and
+  `tests/test_parse.py` checks each against a response captured from NDL.
+- CI runs `pytest` as well as the stdio smoke test.
+- The 1.1.1 introduction said a *lowercase* `and` or `or` is refused by NDL.
+  The library's check is case-insensitive, as the README and the code have said
+  since 27 August; the introduction below is corrected.
+
 ## 1.1.1 — 2026-09-04
 
 No change to the code. This release exists so that the archived record carries
@@ -43,8 +61,8 @@ between them; each search is capped at 100 records with no automatic paging; the
 harvesting interface is not implemented; only the five declared, openly licensed
 data providers are reachable, and a request naming any other is refused before
 it is sent; every response carries the library's credit; nothing is cached. It
-also knows what the library itself rejects. A lowercase `and` or `or` between
-words makes NDL refuse the whole query, so those are caught in the server, with a
+also knows what the library itself rejects. A bare `and` or `or` between words,
+in any case, makes NDL refuse the whole query, so those are caught in the server, with a
 diagnostic, before they fail silently at the other end.
 
 ### Why every answer comes with a record
@@ -68,8 +86,8 @@ Each GitHub release carries a Claude Desktop bundle (`.mcpb`) for Windows, Apple
 Silicon Macs, and Linux; download it, open it, and Claude Desktop asks only for a
 folder to keep the search log in. The bundle needs a Python 3.10 or later
 installation on the machine. From a command line, `pip install
-"git+https://github.com/ckgerteis/ndl-mcp@v1.1.1"` installs the server pinned
-to this release, and the README explains how to register it by hand. Nothing is
+"git+https://github.com/ckgerteis/ndl-mcp@v1.1.2"` installs the server pinned
+to the current release, and the README explains how to register it by hand. Nothing is
 on a package index; the release version is the thing to cite in a methods note.
 
 ndl-mcp is one of three companions for Japanese sources, with

@@ -39,9 +39,9 @@ Download the `.mcpb` for your platform (Windows x64, Apple Silicon, Linux x64; I
 ### From GitHub, pinned to a release
 
 ```bash
-pip install "git+https://github.com/ckgerteis/ndl-mcp@v1.1.1"
+pip install "git+https://github.com/ckgerteis/ndl-mcp@v1.1.2"
 # or, without an environment of your own:
-uvx --from "git+https://github.com/ckgerteis/ndl-mcp@v1.1.1" ndl-mcp
+uvx --from "git+https://github.com/ckgerteis/ndl-mcp@v1.1.2" ndl-mcp
 ```
 
 installs the `ndl-mcp` console script and `ndl-mcp-ledger`. The tag is the thing to cite; `@main` gets whatever is current. Then register it in Claude Desktop (below), or let `install.py` do that.

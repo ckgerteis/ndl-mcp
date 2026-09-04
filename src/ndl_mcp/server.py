@@ -1,5 +1,5 @@
 """
-NDL Search MCP Server (v1.1.1)
+NDL Search MCP Server (v1.1.2)
 ==============================
 An MCP server for searching 国立国会図書館サーチ (NDL Search), operated by the
 National Diet Library of Japan, over the SRU searchRetrieve interface.
@@ -57,7 +57,7 @@ except ModuleNotFoundError:  # mcp SDK 2.x removed mcp.server.fastmcp
 
 from . import mediation as M
 
-__version__ = "1.1.1"
+__version__ = "1.1.2"
 
 # httpx logs every request URL at INFO. There is no credential in an NDL request,
 # so nothing leaks — but a search term travels in that URL, and the line lands on
@@ -466,26 +466,44 @@ def _permalink(res: ET.Element) -> Optional[str]:
     return about or None
 
 
+_RDFS_LABEL = f"{{{NS['rdfs']}}}label"
+
+
 def _record_type(res: ET.Element) -> str:
-    material = (_first(res, "dcndl:materialType") or "").lower()
+    """NDL states the material type in attributes, not text:
+    <dcndl:materialType rdf:resource=".../ndltype/Article" rdfs:label="記事・論文"/>.
+    Until 1.1.2 this read the (empty) element text, fell through, and typed every
+    periodicals-index record as a book."""
+    node = res.find("dcndl:materialType", NS)
+    material = ""
+    if node is not None:
+        material = " ".join(filter(None, (
+            node.attrib.get(_RDF_RESOURCE, ""), node.attrib.get(_RDFS_LABEL, ""), _text(node) or "",
+        ))).lower()
     if "雑誌" in material or "article" in material or "記事" in material:
         return "article"
     if "図書" in material or "book" in material:
         return "book"
-    return "article" if _first(res, "dcndl:sourceTitle") else "book"
+    if _first(res, "dcndl:sourceTitle") or _first(res, "dcndl:publicationName"):
+        return "article"
+    return "book"
 
 
 def _resource_to_item(res: ET.Element) -> dict[str, Any]:
-    pages = _first(res, "dcterms:extent")
+    # Article records carry the host periodical as dcndl:publicationName, the
+    # issue as dcndl:issue and the pages as dcndl:pageRange; book records use
+    # dcterms:extent and dcndl:volume. Read both layouts.
+    pages = _first(res, "dcterms:extent") or _first(res, "dcndl:pageRange")
     return M.make_item(
         title_ja=_first(res, "dcterms:title") or _first(res, "dc:title"),
         title_en=None,
         title_romanized=_first(res, "dc:title/rdf:Description/dcndl:transcription"),
         authors=_creators(res),
-        journal_ja=_first(res, "dcndl:sourceTitle") or _first(res, "dcndl:seriesTitle"),
+        journal_ja=(_first(res, "dcndl:sourceTitle") or _first(res, "dcndl:publicationName")
+                    or _first(res, "dcndl:seriesTitle")),
         journal_en=None,
         volume=_first(res, "dcndl:volume"),
-        issue=_first(res, "dcndl:number"),
+        issue=_first(res, "dcndl:number") or _first(res, "dcndl:issue"),
         pages=pages,
         year=_year(res),
         doi=_identifier(res, "DOI"),
