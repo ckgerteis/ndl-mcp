@@ -73,6 +73,13 @@ file begins where the record is precise enough to be worth writing down.
   the installer help and the bundle's `user_config` description, are
   replaced with neutral ones; no path or name of the author's is in either
   script.
+- **A complete public repository.** `CONTRIBUTING.md` (set-up, the checks,
+  the vendored-file rule, what a pull request carries), `CODE_OF_CONDUCT.md`
+  (Contributor Covenant 2.1), `SECURITY.md` (what counts as a security report
+  for a credential-holding stdio server, and the private route), issue forms
+  that ask for the install route, the interpreter and the log tail, a pull
+  request template, and Dependabot for the workflow actions and the Python
+  dependencies. Repository topics and homepage set on GitHub.
 - README: how to read a "Server disconnected" log, where the log lives on
   each platform, and how an `ImportError` differs from a missing interpreter.
   Pins moved to v1.2.0; the suite pin was `bibliograph-mcp@v1.0.0` and is
