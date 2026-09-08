@@ -66,7 +66,7 @@ file begins where the record is precise enough to be worth writing down.
   now v1.0.1.
 - Workflow actions moved to their current majors (checkout v7, setup-python
   v7, setup-node v7, upload-artifact v7, download-artifact v8, setup-uv v10),
-  which also ends the Node 20 deprecation annotations on every run.
+  which also ends the Node 20 deprecation annotations on every run. setup-uv publishes no moving major tag past v7, so it is pinned exactly.
 
 ## 1.1.3 — 2026-09-04
 
