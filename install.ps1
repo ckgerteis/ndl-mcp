@@ -61,6 +61,11 @@
     NDL only, and only when ndl is among -Servers. Date you registered with the
     National Diet Library, YYYY-MM-DD. Recorded to NDL-API-NOTIFICATION.txt.
 
+.PARAMETER ConfigPath
+    The claude_desktop_config.json to read and write. Defaults to Claude Desktop's own
+    (%APPDATA%\Claude\claude_desktop_config.json); pass another path to install for a
+    different client, or to test without touching the live file.
+
 .PARAMETER PythonVersion
     Python launcher tag used only if no shared venv is found. Defaults to '3.13'.
 
@@ -81,14 +86,15 @@ param(
     [string]$Session,
     [switch]$NoReceipts,
     [string]$NotificationFiled,
-    [string]$PythonVersion = "3.13"
+    [string]$PythonVersion = "3.13",
+    [string]$ConfigPath
 )
 
 $ErrorActionPreference = "Stop"
 
 $ScriptRoot   = $PSScriptRoot
 $DefaultVenv  = Join-Path $env:APPDATA "Claude\mcp-servers\.venv"   # offered, never assumed
-$ConfigPath   = Join-Path $env:APPDATA "Claude\claude_desktop_config.json"
+if (-not $ConfigPath) { $ConfigPath = Join-Path $env:APPDATA "Claude\claude_desktop_config.json" }
 $DefaultDir   = Join-Path $env:APPDATA "Claude\mcp-receipts"
 $FormUrl      = "https://form2.ndl.go.jp/form/pub/ndl07/api"
 $TermsUrl     = "https://ndlsearch.ndl.go.jp/help/api"
@@ -538,7 +544,10 @@ $newConfig["mcpServers"] = $serversHash
 
 $configDir = Split-Path $ConfigPath -Parent
 if (-not (Test-Path $configDir)) { New-Item -ItemType Directory -Path $configDir | Out-Null }
-($newConfig | ConvertTo-Json -Depth 10) | Out-File -FilePath $ConfigPath -Encoding utf8
+# UTF-8 without a byte-order mark: Windows PowerShell's `-Encoding utf8` writes
+# one, and a strict JSON reader (any client other than the one that happens to
+# tolerate it) refuses the file.
+[System.IO.File]::WriteAllText($ConfigPath, ($newConfig | ConvertTo-Json -Depth 10) + "`n", (New-Object System.Text.UTF8Encoding($false)))
 
 # -- 8. Summary ---------------------------------------------------------------
 

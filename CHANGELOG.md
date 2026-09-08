@@ -92,6 +92,11 @@ file begins where the record is precise enough to be worth writing down.
 - `tests/smoke_stdio.py` finds the console script through `sysconfig` and
   with its `.exe` suffix on Windows, so it no longer depends on the scripts
   directory being on PATH. Vendored across the family.
+- `install.ps1` gains `-ConfigPath`, as `install.py` already had, so an
+  install can target another client's file or be tested without touching
+  the live one; and it writes the configuration file as UTF-8 without a
+  byte-order mark. Windows PowerShell's `-Encoding utf8` adds one, which a
+  strict JSON reader refuses.
 - README: how to read a "Server disconnected" log, where the log lives on
   each platform, and how an `ImportError` differs from a missing interpreter.
   Pins moved to v1.2.0; the suite pin was `bibliograph-mcp@v1.0.0` and is
