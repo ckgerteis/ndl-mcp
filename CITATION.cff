@@ -1,4 +1,4 @@
-cff-version: 1.2.0
+cff-version: 1.2.1
 message: "If this software supports your research, please cite it."
 title: "ndl-mcp: an MCP server for NDL Search (国立国会図書館サーチ)"
 abstract: >-
