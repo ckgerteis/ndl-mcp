@@ -88,7 +88,13 @@ cloning one repository is not a request for five more.
 .\install.ps1 -Servers ndl,cinii           # a chosen subset
 ```
 
-Whatever subset you name is registered against one receipts folder, asked for
+Nothing about where things go is decided for you. The script asks where to
+install (the virtual environment Claude Desktop will be pointed at), which
+folder receives the receipts, and which session slug to stamp on them,
+offering a neutral suggestion for each that Enter accepts; run without a
+terminal it does not guess, and stops unless `--venv` and `--receipts-dir`
+(or `--no-receipts`; `-VenvDir` and `-ReceiptsDir` for `install.ps1`) say
+so. Whatever subset you name is registered against one receipts folder, asked for
 once. The script prefers a sibling checkout to the network, carries across
 credentials already registered rather than asking again, leaves servers it was
 not asked about alone, and stops rather than guessing where the servers already

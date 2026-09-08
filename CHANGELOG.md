@@ -60,6 +60,19 @@ file begins where the record is precise enough to be worth writing down.
   pydantic 2.13.5. `requires-python` therefore stays `>=3.10` rather than
   being capped below 3.14, and 3.14 is in the matrix so that the claim is
   re-checked on every push. Pre-release 3.14 builds are not supported.
+- **The installers ask where to install, and never guess.** `install.py` and
+  `install.ps1` chose the virtual environment silently (a `mcp-servers`
+  folder beside Claude Desktop's configuration) and, run without a terminal,
+  fell back to defaults for the receipts folder as well. Both now ask for the
+  install location, the receipts folder and the session slug, offering a
+  neutral suggestion that Enter accepts, and run without a terminal they stop
+  before touching anything unless `--venv` and `--receipts-dir` (or
+  `--no-receipts`; `-VenvDir`, `-ReceiptsDir`, `-NoReceipts` for PowerShell)
+  say so. `--dry-run` and `--print-config` show the suggestions and touch
+  nothing. The author's own project slugs, which had served as examples in
+  the installer help and the bundle's `user_config` description, are
+  replaced with neutral ones; no path or name of the author's is in either
+  script.
 - README: how to read a "Server disconnected" log, where the log lives on
   each platform, and how an `ImportError` differs from a missing interpreter.
   Pins moved to v1.2.0; the suite pin was `bibliograph-mcp@v1.0.0` and is

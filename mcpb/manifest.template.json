@@ -59,7 +59,7 @@
     "receipt_session": {
       "type": "string",
       "title": "Receipt session slug",
-      "description": "A project or article slug stamped on every receipt, e.g. risk-of-history-2026. Optional.",
+      "description": "A project or article slug stamped on every receipt, e.g. my-article-2026. Optional.",
       "required": false
     }
   },
