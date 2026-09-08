@@ -1,5 +1,7 @@
 # ndl-mcp
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22306174.svg)](https://doi.org/10.5281/zenodo.22306174)
+
 An MCP server for searching 国立国会図書館サーチ (NDL Search), operated by the National Diet Library of Japan, over the SRU `searchRetrieve` interface.
 
 Third in a series with [`cinii-mcp`](https://github.com/ckgerteis/cinii-mcp) and [`jstage-mcp`](https://github.com/ckgerteis/jstage-mcp), and sharing their response envelope: typed query and script, matching mode, graduated breadth, per-item `matched_in`, typed diagnostics, a loggable receipt, attribution.
@@ -130,6 +132,39 @@ than a script beside its imports. Replace it with the console script above.
 
 Restart Claude Desktop. The six tools should appear under "ndl" in the tool
 list.
+
+### Any other MCP client
+
+Nothing here is specific to Claude. The server speaks the Model Context Protocol over stdio and
+nothing else: any client that can start a process and talk JSON-RPC to it (Claude Code, Cursor,
+VS Code and Continue, Zed, LibreChat, a script of your own using an MCP SDK) can use it. The
+Claude Desktop bundle and the installers are conveniences for one client; the server underneath is
+the same console script. Register it anywhere by giving the client the absolute path of the
+console script and, optionally, the environment:
+
+```json
+{
+  "mcpServers": {
+    "ndl": {
+      "command": "/absolute/path/to/.venv/bin/ndl-mcp",
+      "env": {
+        "MCP_RECEIPT_DIR": "/absolute/path/to/receipts",
+        "MCP_RECEIPT_SESSION": "project-or-article-slug"
+      }
+    }
+  }
+}
+```
+
+Claude Code takes the same thing on the command line:
+
+```bash
+claude mcp add ndl -- /absolute/path/to/.venv/bin/ndl-mcp
+```
+
+On Windows the path ends in `\.venv\Scripts\ndl-mcp.exe`. `MCP_RECEIPT_DIR` and `MCP_RECEIPT_SESSION`
+are optional; without them the server runs and every envelope says `RECEIPT_NOT_DEPOSITED`. The
+stdio transport is the only one: there is no HTTP endpoint to expose, and nothing to host.
 
 ## Troubleshooting
 

@@ -27,3 +27,7 @@ keywords:
   - East Asian studies
   - digital humanities
   - bibliographic search
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.22306174
+    description: Concept DOI; resolves to the latest version. Each release has its own version DOI on Zenodo.

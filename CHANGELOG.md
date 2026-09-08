@@ -80,6 +80,18 @@ file begins where the record is precise enough to be worth writing down.
   that ask for the install route, the interpreter and the log tail, a pull
   request template, and Dependabot for the workflow actions and the Python
   dependencies. Repository topics and homepage set on GitHub.
+- **Nothing here is specific to Claude, and the README now says so.** The
+  server is a Model Context Protocol server over stdio; the bundle and the
+  installers are conveniences for one client. A new "Any other MCP client"
+  section gives the JSON any client takes and the `claude mcp add` line for
+  Claude Code, with the receipts variables as optional environment.
+- **The DOI is in the repository.** The Zenodo concept DOI
+  (10.5281/zenodo.22306174) is a badge under the README title and an
+  identifier in `CITATION.cff`; neither carried it before, although every
+  release since 1.1.0 has been archived.
+- `tests/smoke_stdio.py` finds the console script through `sysconfig` and
+  with its `.exe` suffix on Windows, so it no longer depends on the scripts
+  directory being on PATH. Vendored across the family.
 - README: how to read a "Server disconnected" log, where the log lives on
   each platform, and how an `ImportError` differs from a missing interpreter.
   Pins moved to v1.2.0; the suite pin was `bibliograph-mcp@v1.0.0` and is
