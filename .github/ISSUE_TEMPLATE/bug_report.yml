@@ -11,7 +11,8 @@ body:
     id: version
     attributes:
       label: Version
-      description: The release you installed (`ndl-mcp --version` is not reliable; check the release tag, the bundle filename, or the `serverInfo.version` in the log).
+      description: >-
+        The release you installed (`ndl-mcp --version` is not reliable; check the release tag, the bundle filename, or the `serverInfo.version` in the log).
       placeholder: v1.2.0
     validations:
       required: true
@@ -32,7 +33,8 @@ body:
     id: platform
     attributes:
       label: Operating system and Python
-      description: For the pip route, the output of `python --version` in the environment you installed into. For the bundle, the OS is enough.
+      description: >-
+        For the pip route, the output of `python --version` in the environment you installed into. For the bundle, the OS is enough.
       placeholder: Windows 11, Python 3.13.4
     validations:
       required: true
@@ -40,14 +42,16 @@ body:
     id: what
     attributes:
       label: What happened
-      description: The tool called and its parameters, and what came back (the envelope, or "Server disconnected"). If the server did not start, paste the log tail here. Windows: %APPDATA%\Claude\logs\mcp-server-<name>.log; macOS: ~/Library/Logs/Claude/mcp-server-<name>.log. Paste the last twenty lines of the most recent launch. Remove any credential before pasting.
+      description: >-
+        The tool called and its parameters, and what came back (the envelope, or "Server disconnected"). If the server did not start, paste the log tail here. Windows: %APPDATA%\Claude\logs\mcp-server-<name>.log; macOS: ~/Library/Logs/Claude/mcp-server-<name>.log. Paste the last twenty lines of the most recent launch. Remove any credential before pasting.
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
       label: What you expected
-      description: What the README or the upstream API's own site says should have happened.
+      description: >-
+        What the README or the upstream API's own site says should have happened.
   - type: checkboxes
     id: checks
     attributes:
