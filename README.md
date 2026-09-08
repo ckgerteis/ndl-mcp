@@ -28,20 +28,24 @@ Register anyway. It costs a few minutes, it tells the library who is using the i
 
 Run it without the flag and it prints the form URL, offers to open it, and continues with the install.
 
+**Python.** The pip and source routes need Python 3.10 or later; 3.10, 3.12, 3.13 and 3.14 are tested in CI on Windows, macOS and Linux. The Claude Desktop bundle needs none, because uv provisions its own.
+
 ## Install
 
 Three routes. All three give you the same server; pick by how much you want to see of it.
 
 ### One click: the Claude Desktop bundle
 
-Download the `.mcpb` for your platform (Windows x64, Apple Silicon, Linux x64; Intel Macs use the pip route below) from the [latest release](https://github.com/ckgerteis/ndl-mcp/releases/latest) and open it; Claude Desktop installs it. Claude Desktop asks only for a receipts folder at install time. The bundle carries every library it needs, but not Python itself: a Python 3.10+ interpreter must be on the machine (`python` on Windows, `python3` on macOS and Linux).
+Download `ndl-mcp-1.2.0.mcpb` from the [latest release](https://github.com/ckgerteis/ndl-mcp/releases/latest) and open it; Claude Desktop installs it. One bundle serves Windows, macOS (Apple Silicon and Intel) and Linux. Claude Desktop asks only for a receipts folder at install time.
+
+The bundle carries the server's source and a lock file, nothing compiled, and needs no Python of its own: Claude Desktop runs it with [uv](https://docs.astral.sh/uv/), using a uv already on your PATH if there is one and otherwise the copy the app ships. On first launch uv provisions Python 3.13 (if the machine has none) and installs the locked libraries, a download of roughly 60 MB that took 26 to 46 seconds on the author's connection; later launches take under a second. If the first launch is slow enough that Claude Desktop reports the server disconnected, restart the app: what uv already fetched is cached, and the second launch completes. Bundles before 1.2.0 vendored libraries compiled for CPython 3.12 only and failed on every other interpreter; see [Troubleshooting](#troubleshooting).
 
 ### From GitHub, pinned to a release
 
 ```bash
-pip install "git+https://github.com/ckgerteis/ndl-mcp@v1.1.3"
+pip install "git+https://github.com/ckgerteis/ndl-mcp@v1.2.0"
 # or, without an environment of your own:
-uvx --from "git+https://github.com/ckgerteis/ndl-mcp@v1.1.3" ndl-mcp
+uvx --from "git+https://github.com/ckgerteis/ndl-mcp@v1.2.0" ndl-mcp
 ```
 
 installs the `ndl-mcp` console script and `ndl-mcp-ledger`. The tag is the thing to cite; `@main` gets whatever is current. Then register it in Claude Desktop (below), or let `install.py` do that.
@@ -49,7 +53,7 @@ installs the `ndl-mcp` console script and `ndl-mcp-ledger`. The tag is the thing
 ### The whole family
 
 ```bash
-pip install "git+https://github.com/ckgerteis/bibliograph-mcp@v1.0.0" && bibliograph install
+pip install "git+https://github.com/ckgerteis/bibliograph-mcp@v1.0.1" && bibliograph install
 ```
 
 installs all six servers and registers them together — one receipts folder, credentials asked for once. See [bibliograph-mcp](https://github.com/ckgerteis/bibliograph-mcp). From a checkout of this repository, `python install.py` does the same for this server alone, `python install.py --all` for the six, on Windows, macOS and Linux; `install.ps1` remains for Windows.
@@ -120,6 +124,22 @@ than a script beside its imports. Replace it with the console script above.
 
 Restart Claude Desktop. The six tools should appear under "ndl" in the tool
 list.
+
+## Troubleshooting
+
+**"Server disconnected"** is all Claude Desktop says when the server process exited before or during the handshake, whatever the reason. The reason is in the log:
+
+- Windows: `%APPDATA%\Claude\logs\mcp-server-<name>.log` (the extension's display name, or the key under `mcpServers`), with `mcp.log` beside it for the app's side of the conversation.
+- macOS: `~/Library/Logs/Claude/mcp-server-<name>.log` and `mcp.log`.
+- Linux: `~/.config/Claude/logs/`.
+
+Read the last launch from the bottom up. Three shapes account for nearly every report:
+
+- **A Python traceback ending in `ImportError` or `ModuleNotFoundError`** (for example `No module named 'pydantic_core._pydantic_core'`). The interpreter started, the code was found, and a compiled library did not match that interpreter. This is what every bundle before 1.2.0 did on any Python other than 3.12. Install the current bundle, or use the pip route, which resolves wheels for the interpreter you install into.
+- **`'python' is not recognized`, `spawn python ENOENT`, or a line from the Microsoft Store**: no interpreter was found on the PATH Claude Desktop constructs. Nothing of this server ran. The current bundle does not launch `python` at all; for the pip route, register the console script by absolute path as shown above.
+- **A line from uv** (`error: ...`, or a download that never finished): the current bundle's runtime could not build its environment, usually because the first launch had no network or ran past Claude Desktop's sixty-second limit. Restart the app; uv keeps what it fetched. A uv older than 0.5 cannot read the lock file; upgrade it or remove it so the app uses its own.
+
+The bundle's own entry point writes one line naming the interpreter, its path and the supported range before re-raising an import failure, so a log from 1.2.0 onwards says which of these it is.
 
 ## What the server will not do
 

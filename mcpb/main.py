@@ -1,14 +1,18 @@
-"""MCPB entry point for ndl-mcp.
+"""Entry point of the Claude Desktop bundle for ndl-mcp.
 
-The bundle vendors every dependency under server/lib (built on the platform it
-targets, because pydantic-core is a native wheel). This file puts that folder
-first on sys.path and starts the same stdio server the console script starts.
+The bundle vendors no libraries. Its manifest declares server.type "uv", so
+Claude Desktop runs this file with uv from the folder it sits in:
+
+    uv --directory <bundle>/server run --frozen <bundle>/server/main.py
+
+uv reads pyproject.toml, .python-version and uv.lock beside this file,
+provisions the pinned interpreter if the machine lacks one, installs the
+locked dependencies into <bundle>/server/.venv, and starts the same stdio
+server the console script starts. The first launch downloads; later ones do
+not.
 """
 import os
 import sys
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "lib"))
 
 # Claude Desktop substitutes an empty string for an optional user_config field
 # the user left blank. The servers treat an empty value as unset, but the
@@ -18,7 +22,21 @@ for _k in list(os.environ):
     if _k.startswith("MCP_RECEIPT") and not os.environ[_k].strip():
         del os.environ[_k]
 
-from ndl_mcp import main  # noqa: E402
+try:
+    from ndl_mcp import main
+except ImportError as exc:
+    # Say what is wrong, not merely that something is. Claude Desktop shows
+    # "Server disconnected"; this line is what the log will carry.
+    _here = os.path.dirname(os.path.abspath(__file__))
+    sys.stderr.write(
+        f"ndl-mcp: cannot import its package under Python {sys.version.split()[0]} "
+        f"at {sys.executable}: {exc}\n"
+        f"ndl-mcp: supported Python is >=3.10; this file is meant to be run by uv "
+        f'(uv --directory "{_here}" run --frozen main.py), which provisions the '
+        f"interpreter and the libraries from the pyproject.toml and uv.lock beside it. "
+        f"If uv could not build that environment its own message is above this line.\n"
+    )
+    raise
 
 if __name__ == "__main__":
     main()

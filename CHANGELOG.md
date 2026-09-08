@@ -7,6 +7,67 @@ the text and, where a version DOI exists, cited by it.
 Releases earlier than those below are on the repository's releases page; this
 file begins where the record is precise enough to be worth writing down.
 
+## 1.2.0 — 2026-09-08
+
+**The Claude Desktop bundle runs again, on every supported interpreter.**
+
+- **What was wrong.** Every `.mcpb` published so far imported under CPython
+  3.12 and nothing else. `mcpb/build.py` vendored the dependencies with
+  `pip install --target` under the interpreter running the build, the release
+  workflow pinned that interpreter to 3.12, and `pydantic-core`, `rpds-py` and
+  `cffi` ship native wheels tagged for one interpreter. The manifest meanwhile
+  declared `runtimes.python >= 3.10` and launched bare `python` from the
+  user's PATH, so Claude Desktop picked whatever satisfied the range, the
+  import failed at module scope, and the user saw "Server disconnected".
+  Measured, not inferred: the published bundles carry `cp312` binaries, and
+  the openalex bundle answered `initialize` under 3.12 alone. The author's
+  own machine registers the servers from a venv and had never run a bundle.
+- **What changed.** The manifest now declares `server.type: "uv"` (manifest
+  0.4). Claude Desktop runs the bundle with uv, using a uv already on the
+  PATH and otherwise the copy the app ships (`uv-runtime`, 0.9.7 at the time
+  of writing), from `server/pyproject.toml`, `server/.python-version` (3.13)
+  and `server/uv.lock`. Nothing compiled is in the bundle, so one bundle
+  serves Windows, macOS and Linux and is about 100 KB instead of 10 to 17 MB.
+  The first launch downloads Python 3.13 if the machine lacks it and the
+  locked libraries, roughly 60 MB; measured at 26 s with a system 3.13 present
+  and 46 s without, against Claude Desktop's 60 s request limit. A first
+  launch that runs past the limit self-heals on restart, because uv caches
+  what it fetched. Later launches take under a second.
+- **How the route was chosen.** Claude Desktop's launcher (read from the
+  app bundle) treats `server.type: "uv"` as a request for its own uv
+  discovery, but resolves a python-type extension that merely names `uv` as
+  its command by a plain PATH search. The working uv-based extension on the
+  author's machine is of the second kind and runs only because a personal uv
+  is installed; the declared type is what makes the route safe for others.
+- **`main.py` says what is wrong.** The import is guarded: on `ImportError`
+  the entry point writes one line naming the running interpreter, its path
+  and the supported range to stderr before re-raising, so the log carries a
+  diagnosis rather than a traceback alone.
+- **A gate that would have caught this.** `tests/bundle_handshake.py`
+  (vendored across the family) unpacks the built bundle, runs it exactly as
+  the host would, and requires the `initialize` reply to name the manifest's
+  version, on a cold cache and under interpreters other than the bundle's
+  pin. The release workflow runs it on all three operating systems before
+  anything is attached to a release; `npx @anthropic-ai/mcpb validate` stays,
+  but it checks the manifest, not whether the server runs.
+- **CI matrix: 3.10, 3.12, 3.13 and 3.14.** 3.12 was the version the old
+  bundles shipped and was never tested; 3.14 was reported to fail at
+  `import mcp` with `TypeError: _eval_type() got an unexpected keyword
+  argument 'prefer_fwd_module'`. Re-tested before this release: that error is
+  pydantic ≥ 2.12.4 meeting a 3.14 interpreter built before the keyword
+  landed (pydantic/pydantic#12544, #12597), and `import mcp` plus this
+  server's full handshake are clean under 3.14.2, 3.14.3 and 3.14.7 with
+  pydantic 2.13.5. `requires-python` therefore stays `>=3.10` rather than
+  being capped below 3.14, and 3.14 is in the matrix so that the claim is
+  re-checked on every push. Pre-release 3.14 builds are not supported.
+- README: how to read a "Server disconnected" log, where the log lives on
+  each platform, and how an `ImportError` differs from a missing interpreter.
+  Pins moved to v1.2.0; the suite pin was `bibliograph-mcp@v1.0.0` and is
+  now v1.0.1.
+- Workflow actions moved to their current majors (checkout v7, setup-python
+  v7, setup-node v7, upload-artifact v7, download-artifact v8, setup-uv v10),
+  which also ends the Node 20 deprecation annotations on every run.
+
 ## 1.1.3 — 2026-09-04
 
 - The MCP SDK's per-request INFO lines ("Processing request of type

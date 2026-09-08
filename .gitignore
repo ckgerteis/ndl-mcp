@@ -4,3 +4,5 @@ __pycache__/
 *.bak
 *.jsonl
 NDL-API-NOTIFICATION.txt
+build/
+dist/
