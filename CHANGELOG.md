@@ -80,6 +80,16 @@ file begins where the record is precise enough to be worth writing down.
   that ask for the install route, the interpreter and the log tail, a pull
   request template, and Dependabot for the workflow actions and the Python
   dependencies. Repository topics and homepage set on GitHub.
+- **The README says what the receipts are for.** A section after the opening
+  explains, for a researcher rather than a maintainer, why a hash-chained
+  record of every query matters: a citable search, negative findings that
+  carry weight, a method section the manifest writes, a record of what an
+  assistant actually asked, and nothing interpreted. The mechanics stay in
+  the receipts section below it.
+- **The README says where to get Python.** A "Getting Python" subsection at
+  the head of Install: python.org on Windows with the PATH tick and the
+  Microsoft Store stub explained, python.org or Homebrew on macOS, the
+  distribution package on Linux, or uv on any of them.
 - **Nothing here is specific to Claude, and the README now says so.** The
   server is a Model Context Protocol server over stdio; the bundle and the
   installers are conveniences for one client. A new "Any other MCP client"

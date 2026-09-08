@@ -14,6 +14,39 @@ Use the national bibliography when an imprint fact has to be right — a date, a
 
 Requests are issued one at a time, at a measured pace, under the undertakings filed with the library.
 
+## What the receipts are for
+
+A search you cannot re-run is a claim you cannot check. When a footnote rests on a database
+query, say that no article in this index uses a term before a certain year, the reader is asked to
+take the search on trust: which term, in which script, on what date, against which index and which
+version of it, and how far down the results the author went. Ordinary searching leaves none of
+that behind. This server leaves all of it. Every
+query-answering tool returns its envelope through the ledger, which appends one line to an
+append-only file: the term actually sent and its script, how the source matched it, how many
+records existed and how many came back, the diagnostics, the tool and its parameters, the server
+version, a timestamp, and the hash of the previous line. The hash makes the file a chain: a line
+cannot be altered, removed or reordered afterwards without the verifier saying so.
+
+What that gives a researcher:
+
+- **A citable search.** Name the receipt in the footnote (session slug, server, date, line hash)
+  and a reader can see exactly what was asked and run it again against the same version.
+- **Negative findings that carry weight.** "Not found" is evidence only if the search that
+  produced it is on record, with its term, its script and its breadth.
+- **A method section that writes itself.** `ndl-mcp-ledger` `manifest <folder>` summarises every
+  query a project made, by server, script and session: the disclosure a journal, a
+  data-availability statement or a research-integrity review asks for.
+- **A record of AI-mediated research.** When a model chose the term, the receipt shows the term
+  it chose and what came back, which is the thing to disclose about work done with an assistant.
+- **Nothing interpreted.** The receipt is the source's own answer with credentials removed. The
+  server does not summarise, rank or paraphrase, so the record is of the source, not of the tool.
+
+Receipts are off until you name a folder (`MCP_RECEIPT_DIR`); each server then writes its own
+`<server>.jsonl` inside it, and `MCP_RECEIPT_SESSION` stamps a project or article slug on every
+line so one folder can serve several projects. `ndl-mcp-ledger` `verify-dir <folder>` checks the chains.
+The mechanics, the variables and what the envelope says when nothing is deposited are in the
+receipts section below.
+
 ## Before you run this
 
 **There is no credential.** The NDL search APIs are open. No API key, no application ID, no token, nothing to paste into a config file. If you are waiting for something to arrive before you can use this, you are waiting for something that is not coming.
@@ -35,6 +68,24 @@ Run it without the flag and it prints the form URL, offers to open it, and conti
 ## Install
 
 Three routes. All three give you the same server; pick by how much you want to see of it.
+
+### Getting Python
+
+The Claude Desktop bundle needs no Python of your own. The other routes need Python 3.10 to 3.14
+and its `venv` module, which the official installers include.
+
+- **Windows.** Download the 64-bit installer from [python.org/downloads](https://www.python.org/downloads/)
+  and run it; tick "Add python.exe to PATH" on the first screen. Afterwards `py --version` (the
+  launcher the installer adds) or `python --version` in a new terminal should print 3.1x. If typing
+  `python` opens the Microsoft Store instead, Windows has no Python yet: that Store page is a stub,
+  and it is also what "'python' is not recognized" usually means.
+- **macOS.** The [python.org installer](https://www.python.org/downloads/macos/), or
+  `brew install python@3.13` with [Homebrew](https://brew.sh). The `/usr/bin/python3` that Xcode's
+  command-line tools provide may be older than 3.10; `python3 --version` says.
+- **Linux.** Your distribution's package: `sudo apt install python3 python3-venv` on Debian and
+  Ubuntu, `sudo dnf install python3` on Fedora. Or let uv provide one (next line).
+- **Any platform, with uv.** [uv](https://docs.astral.sh/uv/getting-started/installation/)
+  installs Python itself: `uv python install 3.13`, then `uv venv` or the `uvx` route below.
 
 ### One click: the Claude Desktop bundle
 
