@@ -43,6 +43,20 @@ file begins where the record is precise enough to be worth writing down.
   the entry point writes one line naming the running interpreter, its path
   and the supported range to stderr before re-raising, so the log carries a
   diagnosis rather than a traceback alone.
+- **A blank field in Claude Desktop's install dialog no longer becomes a
+  folder or a credential.** Found by installing this bundle into Claude
+  Desktop 1.46 with both fields left blank: the app substitutes
+  `${user_config.KEY}` only for fields that have a value and passes the
+  placeholder verbatim otherwise (its own launcher code confirms it), so the
+  ledger wrote `ndl.jsonl` into a folder named `${user_config.receipts_dir}`
+  beside the bundle and stamped `${user_config.receipt_session}` on the
+  line. Every earlier bundle in the family had the same exposure, and for
+  the servers with an optional key it would have sent the placeholder to the
+  provider as the key. The entry point now drops any variable whose value
+  still carries a placeholder, as well as blank receipt variables, before
+  the package imports. `tests/bundle_handshake.py` passes the manifest's
+  env block verbatim, as the host does, imports the entry point with a
+  placeholder credential added, and fails if any placeholder survives.
 - **A gate that would have caught this.** `tests/bundle_handshake.py`
   (vendored across the family) unpacks the built bundle, runs it exactly as
   the host would, and requires the `initialize` reply to name the manifest's

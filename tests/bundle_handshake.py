@@ -110,8 +110,13 @@ def main() -> int:
             return 1
         args = [x.replace("${__dirname}", str(work)) for x in cfg.get("args", [])]
         env = os.environ.copy()
+        # Pass the manifest's env block exactly as Claude Desktop does when every
+        # user_config field is left blank: the "${user_config.KEY}" placeholders
+        # arrive verbatim (Desktop substitutes only fields that have a value).
+        # The entry point must treat those as unset; the check after the run
+        # confirms nothing was created under a placeholder name.
         for k, v in (cfg.get("env") or {}).items():
-            env[k] = "" if "${user_config" in v else v  # blank, as the host does for an unset field
+            env[k] = v
         env.pop("VIRTUAL_ENV", None)
         if a.cold:
             env["UV_CACHE_DIR"] = str(work / "_uv-cache")
@@ -136,7 +141,36 @@ def main() -> int:
         interp = p.stdout.strip()
         print("interpreter:", interp or p.stderr.strip()[-300:])
 
+        # Does the entry point treat unsubstituted placeholders as unset? Import
+        # main.py (its server start is behind __name__ == "__main__") with the
+        # manifest's env block plus a placeholder credential, then look at what
+        # survived. The handshake alone would not show this: the ledger only
+        # writes on a tool call, and a blank credential only matters on one.
+        entry = str(work / server["entry_point"])
+        probe_code = (
+            "import os, importlib.util, sys\n"
+            "os.environ['X_PROBE_KEY'] = '${user_config.x_probe_key}'\n"
+            f"spec = importlib.util.spec_from_file_location('bundle_entry', {entry!r})\n"
+            "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
+            "left = sorted(k for k, v in os.environ.items() if '${user_config.' in v)\n"
+            "print('LEFT', left)\n"
+        )
+        p2 = subprocess.run([uv, "--directory", srv_dir, "run", "--frozen", "python", "-c", probe_code],
+                            env=env, capture_output=True, text=True, encoding="utf-8")
+        left_line = next((ln for ln in p2.stdout.splitlines() if ln.startswith("LEFT ")), None)
+        placeholders_ok = left_line == "LEFT []"
+        print("placeholders:", "stripped" if placeholders_ok else (left_line or p2.stderr.strip()[-300:]))
+
         ok = True
+        stray = [p for p in work.rglob("*") if "${user_config" in p.name]
+        if stray:
+            ok = False
+            print("FAIL: the server created a path from an unsubstituted user_config placeholder:")
+            for p in stray[:5]:
+                print("   ", p.relative_to(work))
+        if not placeholders_ok:
+            ok = False
+            print("FAIL: the entry point left an unsubstituted user_config placeholder in the environment")
         if not info:
             ok = False
             print("FAIL: no initialize reply")

@@ -14,12 +14,16 @@ not.
 import os
 import sys
 
-# Claude Desktop substitutes an empty string for an optional user_config field
-# the user left blank. The servers treat an empty value as unset, but the
-# ledger's "is a destination configured" test should not see an empty folder
-# name as a folder, so strip blanks before the package imports anything.
-for _k in list(os.environ):
-    if _k.startswith("MCP_RECEIPT") and not os.environ[_k].strip():
+# Claude Desktop substitutes "${user_config.KEY}" in the manifest's env block
+# only when the user gave that field a value. A field left blank arrives as
+# the placeholder itself, verbatim (measured on 1.46 with this bundle: the
+# ledger wrote its file into a folder named "${user_config.receipts_dir}" and
+# stamped "${user_config.receipt_session}" on the line), and older hosts sent
+# an empty string. Either means "unset", for every variable: a credential
+# left blank must not be sent to the provider as a key, and a receipts folder
+# left blank must not become a folder. Strip both before the package imports.
+for _k, _v in list(os.environ.items()):
+    if "${user_config." in _v or (_k.startswith("MCP_RECEIPT") and not _v.strip()):
         del os.environ[_k]
 
 try:
