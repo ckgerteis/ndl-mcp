@@ -50,7 +50,7 @@ from typing import Any, Optional
 from xml.etree import ElementTree as ET
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 try:  # mcp SDK 1.x
     from mcp.server.fastmcp import FastMCP as _MCPServer
 except ModuleNotFoundError:  # mcp SDK 2.x removed mcp.server.fastmcp
@@ -609,6 +609,25 @@ class GetRecordInput(BaseModel):
     ndl_bib_id: Optional[str] = Field(default=None, description="NDL bibliographic ID.")
     jpno: Optional[str] = Field(default=None, description="Japanese national bibliography number (全国書誌番号).")
 
+    @field_validator("ndl_bib_id", "jpno")
+    @classmethod
+    def _identifier_shape(cls, v: Optional[str]) -> Optional[str]:
+        """An identifier is letters, digits and hyphens. Anything else ("a and b",
+        a quote that would close the CQL value) is not an identifier and is
+        refused before a request is built."""
+        if v is None or not v.strip():
+            return None
+        v = v.strip()
+        if not _IDENTIFIER.fullmatch(v):
+            raise ValueError("an NDL identifier is 1-32 letters, digits or hyphens")
+        return v
+
+
+_IDENTIFIER = re.compile(r"[0-9A-Za-z-]{1,32}")
+# get_record asks for this many candidates and keeps the one whose identifier
+# matches: ndl_bib_id has no exact CQL index, so it is matched as free text.
+GET_RECORD_CANDIDATES = 10
+
 
 def _fields(params: SearchInput) -> dict[str, Optional[str]]:
     return {
@@ -828,11 +847,14 @@ async def ndl_get_record(params: GetRecordInput) -> str:
 
     key, value = next(iter(supplied.items()))
     index = "jpno" if key == "jpno" else "anywhere"
-    cql = f"{index}={_cql_value(value)}"
+    # Scoped to the declared providers like every search: unscoped, NDL
+    # searches all of them, including the two this server undertook not to query.
+    cql = " AND ".join([f"{index}={_cql_value(value)}"]
+                       + [f"dpid={_cql_value(d)}" for d in ALL_DPIDS])
     request = {
         "operation": "searchRetrieve", "version": "1.2", "query": cql,
         "recordSchema": "dcndl", "recordPacking": "xml",
-        "maximumRecords": 1, "startRecord": 1, "onlyBib": "true",
+        "maximumRecords": GET_RECORD_CANDIDATES, "startRecord": 1, "onlyBib": "true",
     }
 
     try:
@@ -840,10 +862,21 @@ async def ndl_get_record(params: GetRecordInput) -> str:
     except Exception as exc:  # noqa: BLE001
         total, items, diagnostic = 0, [], _error_diag(exc)
 
+    # Only a record carrying the identifier asked for is that record.
+    id_field = "naid" if key == "jpno" else "crid"
+    match = [it for it in items if (it.get("ids") or {}).get(id_field) == value]
     if diagnostic:
         diags = [diagnostic]
-    elif items:
+    elif match:
         diags = [M.diag("info", "OK", "Resolved to one record.", None)]
+    elif items:
+        others = ", ".join(str((it.get("ids") or {}).get(id_field)) for it in items[:3])
+        diags = [M.diag(
+            "warning", "ZERO_CONJUNCTION",
+            f"No record carries {key}={value}. NDL returned {len(items)} other record(s) "
+            f"({others}), which are not shown.",
+            "Check the identifier; NDL bibliographic IDs are matched as free text.",
+        )]
     else:
         diags = [M.diag(
             "warning", "ZERO_CONJUNCTION",
@@ -854,8 +887,8 @@ async def ndl_get_record(params: GetRecordInput) -> str:
     env = M.build_envelope(
         server="ndl", operation="get_record", input_terms=value, normalized=value,
         params=request,
-        matching_mode=MATCHING_MODE, total=total, start=1,
-        items=items[:1], diagnostics=diags, attribution=attribution,
+        matching_mode=MATCHING_MODE, total=1 if match else 0, start=1,
+        items=match[:1], diagnostics=diags, attribution=attribution,
     )
     return M.emit(env)
 
