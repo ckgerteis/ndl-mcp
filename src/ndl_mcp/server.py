@@ -704,6 +704,9 @@ async def _search(operation: str, params: SearchInput, dpids: list[str]) -> str:
         total, items, diagnostic = _parse_sru(await _sru_request(request))
     except Exception as exc:  # noqa: BLE001
         total, items, diagnostic = 0, [], _error_diag(exc)
+    # The cap holds on what is shown, not only on what was asked for: a
+    # response carrying more records than maximumRecords is cut to it.
+    items = items[:request["maximumRecords"]]
 
     diags: list[dict] = []
     if diagnostic:
