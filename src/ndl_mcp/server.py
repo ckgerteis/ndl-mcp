@@ -519,6 +519,15 @@ def _resource_to_item(res: ET.Element) -> dict[str, Any]:
     )
 
 
+def _not_sru(why: str) -> dict:
+    return M.diag(
+        "error", "API_ERROR",
+        f"NDL Search answered, but not with an SRU search response: {why}. "
+        "The search was not answered; this is not an empty result.",
+        "Usually a maintenance or throttling page. Retry later.",
+    )
+
+
 def _parse_sru(xml_text: str) -> tuple[int, list[dict[str, Any]], Optional[dict]]:
     """Return (total, items, diagnostic-or-None) from one SRU response."""
     root = ET.fromstring(xml_text)
@@ -539,7 +548,14 @@ def _parse_sru(xml_text: str) -> tuple[int, list[dict[str, Any]], Optional[dict]
             "The query was rejected. Check index names and quoting.",
         )
 
-    total = int(_first(root, "srw:numberOfRecords") or 0)
+    # SRU requires numberOfRecords. A maintenance page or a throttle notice
+    # served with status 200 is still well-formed XML; without this check it
+    # parsed as a response with no records and came back as "No record
+    # matched", an outage reported as an empty index.
+    count = _first(root, "srw:numberOfRecords")
+    if count is None:
+        return 0, [], _not_sru(f"<{root.tag}> carries no SRU numberOfRecords")
+    total = int(count)
     # NDL emits more than one BibResource per record: the bibliographic one, and a
     # manifestation stub carrying an rdf:about and nothing else. Taking every
     # BibResource doubles the result set with blanks. Keep the ones with a title.
