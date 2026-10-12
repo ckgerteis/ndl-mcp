@@ -7,6 +7,42 @@ the text and, where a version DOI exists, cited by it.
 Releases earlier than those below are on the repository's releases page; this
 file begins where the record is precise enough to be worth writing down.
 
+## 1.2.3 — 2026-10-12
+
+**Maintenance release from the stress test of 12 October 2026.** No tool was
+added or removed and no parameter changed meaning. Results that were wrong
+before are right now, or are reported as errors instead of as absences.
+
+- **A 200 that is not the protocol is an error, not zero results.** An HTML
+  maintenance page, a bare error object or an empty body served with status
+  200 used to parse as a valid empty answer and came back as a zero-results
+  diagnostic, which reads as an absence in the literature. It is now reported
+  as an error.
+- **Lone surrogates are replaced before anything reaches the wire.** A lone
+  UTF-16 surrogate in an argument or an upstream record made the receipt or
+  the JSON-RPC reply unencodable; over stdio the client could wait forever.
+- **The ledger refuses to append after an unreadable last line.** A torn
+  final line (a crash mid-write) was silently skipped and the hash chain
+  continued from the line before it, so the break was hidden.
+- **Python.** CI now tests 3.11 as well; `requires-python` is capped below
+  3.15 until 3.15 has been tested.
+- **Packaging.** `set_version.py` and `tests/test_release_metadata.py` are
+  checked against the family's hashes in `VENDORED.sha256`.
+- **`ndl_get_record` queries only the declared providers.** It sent no `dpid`
+  clause, so NDL searched every provider, including the two this server
+  undertook not to query. It now carries the five declared dpids, as every
+  search does.
+- **`ndl_get_record` returns only the record asked for.** `ndl_bib_id` is
+  matched as free text and the first hit was returned whatever its
+  identifier. A record is now returned only when its NDLBibID or JPNO equals
+  the identifier given; otherwise `ZERO_CONJUNCTION` names what NDL returned
+  and shows none of it. Identifiers must be 1–32 letters, digits or hyphens.
+- **No more than 100 records are shown.** The cap held on the request but not
+  on the response; records beyond `maximumRecords` are now cut.
+- **Retry-After.** Only a finite, non-negative value is honoured, and the
+  wait is capped at 30 seconds; `nan`, `inf` or a negative value fall back to
+  the 10-second back-off.
+
 ## 1.2.2 — 2026-09-12
 
 **The bundle's environment is built when it is installed, not during the first
