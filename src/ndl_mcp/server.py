@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import re
 import time
 from typing import Any, Optional
@@ -239,10 +240,15 @@ async def _sru_request(params: dict[str, Any]) -> str:
                 break
             retry_after = resp.headers.get("Retry-After")
             try:
-                pause = min(float(retry_after), 30.0) if retry_after else BACKOFF_SECONDS
+                pause = float(retry_after) if retry_after else BACKOFF_SECONDS
             except ValueError:
                 pause = BACKOFF_SECONDS
-            await asyncio.sleep(pause)
+            # Only a finite, non-negative number of seconds is honoured. "nan"
+            # parsed, min() kept it, and asyncio.sleep(nan) never returns on
+            # Python 3.10-3.12: inside _rate_lock that hung every later call.
+            if not math.isfinite(pause) or pause < 0:
+                pause = BACKOFF_SECONDS
+            await asyncio.sleep(min(pause, 30.0))
     resp.raise_for_status()
     return resp.text
 
