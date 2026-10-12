@@ -3,7 +3,7 @@ name = "ndl-mcp"
 version = "1.2.2"
 description = "An MCP server for the NDL Search (国立国会図書館サーチ) SRU API"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.15"
 license = { text = "MIT" }
 authors = [
     { name = "Christopher Gerteis", email = "christopher.gerteis@gmail.com" },
