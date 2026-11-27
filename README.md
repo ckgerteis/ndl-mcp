@@ -294,7 +294,7 @@ The server checks before sending and returns a `RESERVED_WORD_IN_QUERY` diagnost
 
 ## Response format
 
-Every tool returns the response envelope built by `mediation.py` and defined in [`response-schema.json`](response-schema.json), schema version 2.3.0. The module and the schema are vendored byte-identically across `cinii-mcp`, `jstage-mcp`, `korea-scholarship-mcp` and this server, so an envelope from one can be read by a consumer written for another.
+Every tool returns the response envelope built by `mediation.py` and defined in [`response-schema.json`](response-schema.json), schema version 2.4.0; since 2.4.0 every receipt names the server release that issued it (`receipt.server_version`), outside the query hash. The module and the schema are vendored byte-identically across `cinii-mcp`, `jstage-mcp`, `korea-scholarship-mcp` and this server, so an envelope from one can be read by a consumer written for another.
 
 Search operations carry `searched_for` — the term actually sent, its detected script, and the matching mode — hoisted to the top of the envelope so a relaying client cannot drop it. `ndl_get_record` omits it: a fetch is handed an identifier and chooses no term.
 
